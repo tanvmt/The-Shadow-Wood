@@ -5,13 +5,19 @@ using UnityEngine.InputSystem;
 
 namespace StarterAssets
 {
+	public enum InputMode {Hold, Toggle}
 	public class StarterAssetsInputs : MonoBehaviour
 	{
+		[Header("Control Settings")]
+		public InputMode sprintMode = InputMode.Hold;
+		public InputMode crouchMode = InputMode.Toggle;
+		
 		[Header("Character Input Values")]
 		public Vector2 move;
 		public Vector2 look;
 		public bool jump;
 		public bool sprint;
+		public bool crouch;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
@@ -41,7 +47,28 @@ namespace StarterAssets
 
 		public void OnSprint(InputValue value)
 		{
-			SprintInput(value.isPressed);
+			bool isPressed = value.isPressed;
+			if (sprintMode == InputMode.Hold)
+			{
+				SprintInput(isPressed);
+			}
+			else
+			{
+				if (isPressed) SprintInput(!sprint);
+			}
+		}
+
+		public void OnCrouch(InputValue value)
+		{
+			bool isPressed = value.isPressed;
+			if (crouchMode == InputMode.Hold)
+			{
+				CrouchInput(isPressed);
+			}
+			else
+			{
+				if (isPressed) CrouchInput(!crouch);
+			}
 		}
 #endif
 
@@ -64,6 +91,11 @@ namespace StarterAssets
 		public void SprintInput(bool newSprintState)
 		{
 			sprint = newSprintState;
+		}
+
+		public void CrouchInput(bool newCrouchState)
+		{
+			crouch = newCrouchState;
 		}
 		
 		private void OnApplicationFocus(bool hasFocus)

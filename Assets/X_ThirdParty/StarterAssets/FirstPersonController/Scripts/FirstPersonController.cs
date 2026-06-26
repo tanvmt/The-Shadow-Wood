@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -33,6 +35,14 @@ namespace StarterAssets
 		[Tooltip("Time required to pass before entering the fall state. Useful for walking down stairs")]
 		public float FallTimeout = 0.15f;
 
+		[Header("Crouch")]
+		[Tooltip("Move speed when crouching in m/s")]
+		public float CrouchSpeed = 2.0f;
+		[Tooltip("Height of the CharacterController when crouching")]
+		public float CrouchHeight = 1.0f;
+		[Tooltip("How fast the player transitions in/out of crouch")]
+		public float CrouchTransitionSpeed = 10.0f;
+
 		[Header("Player Grounded")]
 		[Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
 		public bool Grounded = true;
@@ -64,6 +74,13 @@ namespace StarterAssets
 		private float _jumpTimeoutDelta;
 		private float _fallTimeoutDelta;
 
+		// crouch fields
+		private float _originalHeight;
+		private Vector3 _originalCameraPosition;
+		private float _crouchCameraHeightY;
+		private bool _isCrouching;
+		private bool _isSprinting;
+
 	
 #if ENABLE_INPUT_SYSTEM
 		private PlayerInput _playerInput;
@@ -71,6 +88,8 @@ namespace StarterAssets
 		private CharacterController _controller;
 		private StarterAssetsInputs _input;
 		private GameObject _mainCamera;
+
+		private PlayerStamina _stamina;
 
 		private const float _threshold = 0.01f;
 
@@ -108,13 +127,112 @@ namespace StarterAssets
 			// reset our timeouts on start
 			_jumpTimeoutDelta = JumpTimeout;
 			_fallTimeoutDelta = FallTimeout;
+
+			// Store original heights
+			_originalHeight = _controller.height;
+			_originalCameraPosition = CinemachineCameraTarget.transform.localPosition;
+			// Automatically calculate crouched camera height based on the difference in controller heights
+			_crouchCameraHeightY = _originalCameraPosition.y - (_originalHeight - CrouchHeight);
+
+			_stamina = GetComponent<PlayerStamina>();
+			if (_stamina != null)
+			{
+				_stamina.OnStaminaExhausted += ForceStopSprint;
+			}
+		}
+
+		private void OnDestroy()
+		{
+			if (_stamina != null) _stamina.OnStaminaExhausted -= ForceStopSprint;
 		}
 
 		private void Update()
 		{
+			Crouch();
+			HandleSprint();
 			JumpAndGravity();
 			GroundedCheck();
 			Move();
+
+			if (_stamina != null)
+			{
+				bool isMovingAndSprinting = _isSprinting && _input.move != Vector2.zero;
+				if (isMovingAndSprinting)
+				{
+					_stamina.Consume(Time.deltaTime);
+				}
+				else
+				{
+					_stamina.Regenerate(Time.deltaTime);
+				}
+			}
+		}
+
+		private void ForceStopSprint()
+		{
+			_input.sprint = false;
+			_isSprinting = false;
+		}
+
+		private void Crouch()
+		{
+			if (_isCrouching && IsCeilingAbove())
+			{
+				_input.crouch = true;
+			}
+			else
+			{
+				_isCrouching = _input.crouch;
+			}
+
+			// Lerp height and center of CharacterController
+			float targetHeight = _isCrouching ? CrouchHeight : _originalHeight;
+			float currentHeight = Mathf.Lerp(_controller.height, targetHeight, Time.deltaTime * CrouchTransitionSpeed);
+			_controller.height = currentHeight;
+			_controller.center = new Vector3(_controller.center.x, currentHeight / 2f, _controller.center.z);
+
+			// Lerp CinemachineCameraTarget localPosition.y
+			float targetCameraY = _isCrouching ? _crouchCameraHeightY : _originalCameraPosition.y;
+			Vector3 cameraPosition = CinemachineCameraTarget.transform.localPosition;
+			cameraPosition.y = Mathf.Lerp(cameraPosition.y, targetCameraY, Time.deltaTime * CrouchTransitionSpeed);
+			CinemachineCameraTarget.transform.localPosition = cameraPosition;
+		}
+
+		private void HandleSprint()
+		{
+			if (_input.sprintMode == InputMode.Toggle && _input.move == Vector2.zero)
+			{
+				_input.sprint = false;
+			}
+
+			bool isExhausted = _stamina != null && _stamina.IsExhausted;
+
+			if (_isCrouching || isExhausted)
+			{
+				_input.sprint = false;
+			}
+
+			_isSprinting = _input.sprint;
+		}
+
+		private bool IsCeilingAbove()
+		{
+			// Use a smaller radius to prevent detecting walls beside the player
+			float checkRadius = 0.2f;
+			// The top position we want to check is at the standing height, minus the check radius
+			Vector3 spherePosition = transform.position + Vector3.up * (_originalHeight - checkRadius);
+			
+			// Use OverlapSphere to find all colliders in the target area and ignore player's own colliders
+			Collider[] colliders = Physics.OverlapSphere(spherePosition, checkRadius, GroundLayers, QueryTriggerInteraction.Ignore);
+			foreach (var col in colliders)
+			{
+				if (col.gameObject == gameObject || col.transform.IsChildOf(transform))
+				{
+					continue;
+				}
+				return true; // Found a ceiling obstacle
+			}
+			return false;
 		}
 
 		private void LateUpdate()
@@ -154,7 +272,7 @@ namespace StarterAssets
 		private void Move()
 		{
 			// set target speed based on move speed, sprint speed and if sprint is pressed
-			float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
+			float targetSpeed = _isCrouching ? CrouchSpeed : (_isSprinting ? SprintSpeed : MoveSpeed);
 
 			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
 
@@ -214,8 +332,22 @@ namespace StarterAssets
 				// Jump
 				if (_input.jump && _jumpTimeoutDelta <= 0.0f)
 				{
-					// the square root of H * -2 * G = how much velocity needed to reach desired height
-					_verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+					_input.jump = false; // Consume jump input
+					if (_isCrouching)
+					{
+						// Try to uncrouch first
+						if (!IsCeilingAbove())
+						{
+							_isCrouching = false;
+							// the square root of H * -2 * G = how much velocity needed to reach desired height
+							_verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+						}
+					}
+					else
+					{
+						// the square root of H * -2 * G = how much velocity needed to reach desired height
+						_verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+					}
 				}
 
 				// jump timeout
