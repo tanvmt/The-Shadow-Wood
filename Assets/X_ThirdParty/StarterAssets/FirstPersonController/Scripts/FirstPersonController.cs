@@ -1,4 +1,4 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -60,6 +60,8 @@ namespace StarterAssets
 		public float TopClamp = 90.0f;
 		[Tooltip("How far in degrees can you move the camera down")]
 		public float BottomClamp = -90.0f;
+
+		public Vector3 HorizontalVelocity => new Vector3(_controller.velocity.x, 0f, _controller.velocity.z);
 
 		// cinemachine
 		private float _cinemachineTargetPitch;
