@@ -1,0 +1,16 @@
+{
+    "name": "TheShadowWood.Audio",
+    "rootNamespace": "TheShadowWood.Audio",
+    "references": [
+        "GUID:2277fab2b5e215b43a1f497b472dd075"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

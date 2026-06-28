@@ -1,0 +1,17 @@
+{
+    "name": "TheShadowWood.Inventory",
+    "rootNamespace": "TheShadowWood.Inventory",
+    "references": [
+        "GUID:2277fab2b5e215b43a1f497b472dd075",
+        "GUID:b63ca7f529d655f498e445609f9c66e3"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

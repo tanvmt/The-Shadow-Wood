@@ -1,5 +1,4 @@
-﻿using NUnit.Framework;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -91,8 +90,6 @@ namespace StarterAssets
 		private StarterAssetsInputs _input;
 		private GameObject _mainCamera;
 
-		private PlayerStamina _stamina;
-
 		private const float _threshold = 0.01f;
 
 		private bool IsCurrentDeviceMouse
@@ -135,17 +132,6 @@ namespace StarterAssets
 			_originalCameraPosition = CinemachineCameraTarget.transform.localPosition;
 			// Automatically calculate crouched camera height based on the difference in controller heights
 			_crouchCameraHeightY = _originalCameraPosition.y - (_originalHeight - CrouchHeight);
-
-			_stamina = GetComponent<PlayerStamina>();
-			if (_stamina != null)
-			{
-				_stamina.OnStaminaExhausted += ForceStopSprint;
-			}
-		}
-
-		private void OnDestroy()
-		{
-			if (_stamina != null) _stamina.OnStaminaExhausted -= ForceStopSprint;
 		}
 
 		private void Update()
@@ -155,25 +141,6 @@ namespace StarterAssets
 			JumpAndGravity();
 			GroundedCheck();
 			Move();
-
-			if (_stamina != null)
-			{
-				bool isMovingAndSprinting = _isSprinting && _input.move != Vector2.zero;
-				if (isMovingAndSprinting)
-				{
-					_stamina.Consume(Time.deltaTime);
-				}
-				else
-				{
-					_stamina.Regenerate(Time.deltaTime);
-				}
-			}
-		}
-
-		private void ForceStopSprint()
-		{
-			_input.sprint = false;
-			_isSprinting = false;
 		}
 
 		private void Crouch()
@@ -207,9 +174,7 @@ namespace StarterAssets
 				_input.sprint = false;
 			}
 
-			bool isExhausted = _stamina != null && _stamina.IsExhausted;
-
-			if (_isCrouching || isExhausted)
+			if (_isCrouching)
 			{
 				_input.sprint = false;
 			}

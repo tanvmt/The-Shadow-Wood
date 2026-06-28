@@ -1,0 +1,16 @@
+{
+    "name": "TheShadowWood.Core",
+    "rootNamespace": "TheShadowWood.Core",
+    "references": [
+        "GUID:067f4c7290931e748b6abff3515198a4"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
