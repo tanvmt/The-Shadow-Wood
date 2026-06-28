@@ -1,0 +1,18 @@
+{
+    "name": "TheShadowWood.Player",
+    "rootNamespace": "TheShadowWood.Player",
+    "references": [
+        "GUID:0ca1c292512917b4d9ffde919771fb20",
+        "GUID:2277fab2b5e215b43a1f497b472dd075",
+        "GUID:b63ca7f529d655f498e445609f9c66e3"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

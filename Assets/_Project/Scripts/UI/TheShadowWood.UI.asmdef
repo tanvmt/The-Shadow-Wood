@@ -1,0 +1,20 @@
+{
+    "name": "TheShadowWood.UI",
+    "rootNamespace": "",
+    "references": [
+        "GUID:2277fab2b5e215b43a1f497b472dd075",
+        "GUID:0f35638c0c6bf5c4d8cf6e43f86e1112",
+        "GUID:93868e609a91722479867f8d8f852a17",
+        "GUID:9e828320209970d45a236db5076f94bc",
+        "GUID:02409dc5c1fd4694fa85fa4ea89c8211"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
