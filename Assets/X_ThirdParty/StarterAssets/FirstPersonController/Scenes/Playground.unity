@@ -1355,8 +1355,8 @@ MonoBehaviour:
   walkBobSpeed: 4
   sprintBobSpeed: 6
   crouchBobSpeed: 2
-  bobHorizontalAmount: 0.04
-  bobVerticalAmount: 0.012
+  bobHorizontalAmount: 0.02
+  bobVerticalAmount: 0.0015
 --- !u!1 &2114283753834967212
 GameObject:
   m_ObjectHideFlags: 0
