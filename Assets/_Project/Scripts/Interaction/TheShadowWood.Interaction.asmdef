@@ -1,0 +1,16 @@
+{
+    "name": "TheShadowWood.Interaction",
+    "rootNamespace": "TheShadowWood.Interaction",
+    "references": [
+        "TheShadowWood.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
