@@ -40,7 +40,7 @@ namespace TheShadowWood.Interaction
 
         private void Awake()
         {
-            _hitBuffer = new RaycastHit[Mathf.Clamp(hitBufferSize, 4, 64)];
+            EnsureHitBuffer();
             ResolveCamera();
         }
 
@@ -88,6 +88,8 @@ namespace TheShadowWood.Interaction
 
         public void RefreshFocus()
         {
+            EnsureHitBuffer();
+
             if (interactionCamera == null)
             {
                 ResolveCamera();
@@ -200,6 +202,15 @@ namespace TheShadowWood.Interaction
             if (interactionCamera == null)
             {
                 interactionCamera = Camera.main;
+            }
+        }
+
+        private void EnsureHitBuffer()
+        {
+            int requiredSize = Mathf.Clamp(hitBufferSize, 4, 64);
+            if (_hitBuffer == null || _hitBuffer.Length != requiredSize)
+            {
+                _hitBuffer = new RaycastHit[requiredSize];
             }
         }
 
