@@ -84,6 +84,7 @@ Các component sau phải ở **cùng GameObject Player** vì chúng dùng `GetC
 | Jump | `Space` | South Button | Thường là A/Cross |
 | Sprint | `Left Shift` | Left Trigger | `Hold` hoặc `Toggle` do component input quyết định |
 | Crouch | `Left Ctrl` | Chưa có binding | `Hold` hoặc `Toggle` |
+| Interact | `E` | North Button | Raycast interaction từ tâm camera |
 
 Input asset đang có hai control scheme chính: `KeyboardMouse` và `Gamepad`. `Xbox Controller` và `PS4 Controller` có tên trong asset nhưng chưa khai báo device/binding group riêng.
 
@@ -93,7 +94,7 @@ Input asset đang có hai control scheme chính: `KeyboardMouse` và `Gamepad`. 
 - **Default Map**: `Player`
 - **Behavior**: `Send Messages`
 
-Tên action phải khớp các method `OnMove`, `OnLook`, `OnJump`, `OnSprint`, `OnCrouch` trong `StarterAssetsInputs`. Khi thêm hoặc đổi tên action, phải cập nhật method tương ứng.
+Tên action movement phải khớp các method `OnMove`, `OnLook`, `OnJump`, `OnSprint`, `OnCrouch` trong `StarterAssetsInputs`. Action `Interact` được nhận bởi `PlayerInteractor.OnInteract` trên cùng GameObject. Khi thêm hoặc đổi tên action, phải cập nhật callback tương ứng.
 
 ## 5. Cấu hình Player
 
@@ -339,7 +340,7 @@ Object bị đẩy phải có Rigidbody không kinematic và nằm trong `Push L
 ## 12. Lưu ý và giới hạn hiện tại
 
 1. **Prefab và scene chưa đồng bộ:** stamina/head bob chỉ được add ở `Playground`. Nên tạo prefab variant hoặc apply các component sau khi team chốt profile chuẩn.
-2. **Layer 8 đang chưa có tên:** prefab Player đang dùng layer index 8 nhưng `TagManager` chưa đặt tên layer. Team nên thống nhất tên (ví dụ `Player`) trước khi dùng layer này trong mask/raycast.
+2. **Layer convention:** Player dùng layer 8 (`Player`), object tương tác dùng layer 9 (`Interactable`). Khi thêm raycast/mask mới phải giữ Player ngoài interaction visibility mask.
 3. **Crouch chưa có gamepad binding:** action `Crouch` mới chỉ bind `Left Ctrl`.
 4. **Stamina dựa trên input, không dựa trên vận tốc thực:** chỉ cần sprint đang bật và move khác zero là stamina tiêu hao, kể cả khi Player bị tường chặn hoặc đang ở trên không.
 5. **Exhausted không có ngưỡng hồi tối thiểu:** stamina vừa lớn hơn 0 là `IsExhausted` thành false, nhưng sprint đã bị set false và người chơi thường phải nhả/nhấn lại nút sprint.

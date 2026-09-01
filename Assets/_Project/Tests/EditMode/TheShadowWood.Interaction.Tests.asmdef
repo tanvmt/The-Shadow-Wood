@@ -1,0 +1,23 @@
+{
+    "name": "TheShadowWood.Interaction.Tests",
+    "rootNamespace": "TheShadowWood.Interaction.Tests",
+    "references": [
+        "GUID:b63ca7f529d655f498e445609f9c66e3"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
