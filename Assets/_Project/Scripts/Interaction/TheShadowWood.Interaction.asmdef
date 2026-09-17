@@ -3,7 +3,8 @@
     "rootNamespace": "TheShadowWood.Interaction",
     "references": [
         "TheShadowWood.Core",
-        "GUID:75469ad4d38634e559750d17036d5f7c"
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:02409dc5c1fd4694fa85fa4ea89c8211"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
