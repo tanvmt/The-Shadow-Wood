@@ -1,0 +1,27 @@
+{
+    "name": "TheShadowWood.Bootstrap",
+    "rootNamespace": "TheShadowWood.Bootstrap",
+    "references": [
+        "VContainer",
+        "UniTask",
+        "MessagePipe",
+        "MessagePipe.VContainer",
+        "TheShadowWood.Core",
+        "TheShadowWood.Audio",
+        "TheShadowWood.Interaction",
+        "TheShadowWood.Inventory",
+        "TheShadowWood.Player",
+        "TheShadowWood.Puzzles",
+        "TheShadowWood.Environment",
+        "TheShadowWood.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
