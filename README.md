@@ -84,6 +84,7 @@ Assets/
 ├── Scenes/SampleScene.unity           # Scene mẫu đang được build
 └── Settings/                          # URP asset và renderer cho PC/Mobile
 Docs/
+├── DependencyInjection.md             # Quy ước VContainer, MessagePipe, scope
 ├── InteractionSystem.md               # Tài liệu interaction
 └── CharacterController.md              # Tài liệu controller, stamina, head bob
 ```
@@ -212,4 +213,4 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 
 ---
 
-Tài liệu theo hệ thống: [Interaction System](Docs/InteractionSystem.md) · [Character Controller](Docs/CharacterController.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Interaction System](Docs/InteractionSystem.md) · [Character Controller](Docs/CharacterController.md)

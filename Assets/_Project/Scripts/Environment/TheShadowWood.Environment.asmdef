@@ -2,6 +2,9 @@
     "name": "TheShadowWood.Environment",
     "rootNamespace": "TheShadowWood.Environment",
     "references": [
+        "VContainer",
+        "UniTask",
+        "MessagePipe",
         "GUID:2277fab2b5e215b43a1f497b472dd075",
         "GUID:b63ca7f529d655f498e445609f9c66e3",
         "GUID:0f35638c0c6bf5c4d8cf6e43f86e1112"

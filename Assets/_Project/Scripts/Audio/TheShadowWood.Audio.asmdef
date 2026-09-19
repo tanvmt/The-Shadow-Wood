@@ -2,6 +2,9 @@
     "name": "TheShadowWood.Audio",
     "rootNamespace": "TheShadowWood.Audio",
     "references": [
+        "VContainer",
+        "UniTask",
+        "MessagePipe",
         "GUID:2277fab2b5e215b43a1f497b472dd075"
     ],
     "includePlatforms": [],
