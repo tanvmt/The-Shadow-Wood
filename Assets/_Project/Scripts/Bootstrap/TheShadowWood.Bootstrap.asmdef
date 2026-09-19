@@ -13,6 +13,8 @@
         "TheShadowWood.Player",
         "TheShadowWood.Puzzles",
         "TheShadowWood.Environment",
+        "TheShadowWood.Enemy",
+        "TheShadowWood.SaveSystem",
         "TheShadowWood.UI"
     ],
     "includePlatforms": [],
