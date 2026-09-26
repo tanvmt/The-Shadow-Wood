@@ -5,17 +5,22 @@ Tài liệu quy ước DI của **The Shadow Wood**: VContainer làm container, 
 ## Cấu trúc scope
 
 ```text
-RootLifetimeScope            (prefab, tạo qua VContainerSettings, DontDestroyOnLoad)
-│  MessagePipe, service sống suốt game
+RootLifetimeScope              (prefab, tạo qua VContainerSettings, DontDestroyOnLoad)
+│  MessagePipe, ISceneLoader, service sống suốt game
 │
-└── GameplayLifetimeScope    (đặt trong scene gameplay)
-       service, entry point và view của scene
+├── BootstrapLifetimeScope     (scene Bootstrap)  BootstrapFlow
+├── MenuLifetimeScope          (scene Menu)       MainMenuView, MainMenuPresenter
+└── GameplayLifetimeScope      (scene Gameplay)   service, entry point và view của gameplay
 ```
+
+Tại một thời điểm chỉ có một scope scene tồn tại, vì mọi scene load ở chế độ Single. Luồng giữa các scene: [SceneFlow.md](SceneFlow.md).
 
 | Scope | Vị trí | Đăng ký gì |
 |---|---|---|
-| `RootLifetimeScope` | `Assets/_Project/Prefabs/System/RootLifetimeScope.prefab` | MessagePipe và service sống suốt game (scene loader, input, audio, settings…) |
-| `GameplayLifetimeScope` | GameObject trong scene gameplay | Service, entry point và component chỉ tồn tại trong scene đó |
+| `RootLifetimeScope` | `Assets/_Project/Prefabs/System/RootLifetimeScope.prefab` | MessagePipe, `ISceneLoader`/`ISceneBackend`, và service sống suốt game (input, audio, settings…) |
+| `BootstrapLifetimeScope` | GameObject trong `Bootstrap.unity` | `BootstrapFlow` |
+| `MenuLifetimeScope` | GameObject trong `Menu.unity` | View và presenter của menu |
+| `GameplayLifetimeScope` | GameObject trong `Gameplay.unity` | Service, entry point và component chỉ tồn tại trong scene gameplay |
 
 `Assets/_Project/Settings/VContainerSettings.asset` trỏ tới prefab Root và nằm trong **Player Settings → Preloaded Assets**. Vì vậy Root luôn được tạo trước, kể cả khi bấm Play trực tiếp ở một scene bất kỳ.
 

@@ -39,9 +39,11 @@ Project sử dụng Universal Render Pipeline (URP) và Unity Input System. Các
 2. Trong Unity Hub, chọn **Add** → chọn thư mục gốc chứa `Assets`, `Packages` và `ProjectSettings`.
 3. Mở project bằng Unity Editor **6000.3.12f1**. Unity sẽ tự khôi phục package và tạo lại `Library` trong lần mở đầu tiên.
 4. Chờ Unity import asset và hết lỗi compile trong Console.
-5. Mở `Assets/Scenes/SampleScene.unity`, rồi nhấn **Play**.
+5. Mở `Assets/_Project/Scenes/Bootstrap.unity` (hoặc chọn `Build/Bootstrap` trong dropdown Scene Switcher trên toolbar), rồi nhấn **Play**.
 
-`SampleScene` hiện là scene duy nhất được bật trong **File → Build Profiles / Build Settings**. Khi thêm scene mới vào game build, hãy thêm nó vào danh sách này và kiểm tra thứ tự tải scene.
+Build Settings gồm ba scene theo thứ tự `Bootstrap` → `Menu` → `Gameplay`. `Bootstrap` phải luôn ở index 0. Luồng scene, cách load scene bằng code và cách thêm scene mới: [Docs/SceneFlow.md](Docs/SceneFlow.md).
+
+Scene test cũ của controller (`Playground`, `SampleScene`) vẫn mở và Play trực tiếp được, nhưng không nằm trong luồng game.
 
 ## Điều khiển
 
@@ -69,13 +71,15 @@ Assets/
 │   ├── Materials/                     # Material nội bộ
 │   ├── Models/                        # Model nhân vật, môi trường và prop
 │   ├── Prefabs/                       # Prefab character, environment, system, interactable
-│   ├── Scenes/                        # Scene nội bộ theo chapter/hệ thống
+│   ├── Scenes/                        # Bootstrap, Menu, Gameplay (+ Dev/ cho scene thử nghiệm)
 │   ├── Scripts/                       # C# theo từng domain
-│   │   ├── Core/                      # Thành phần nền tảng
+│   │   ├── Bootstrap/                 # Composition root: LifetimeScope và flow của từng scene
+│   │   ├── Core/                      # Contract dùng chung, scene loader
+│   │   ├── Editor/                    # Công cụ Editor (Scene Switcher)
 │   │   ├── Interaction/               # Raycast, focus và interactable
 │   │   ├── Inventory/                 # Pickup contract
 │   │   ├── Player/                    # Stamina, head bob
-│   │   ├── UI/                        # Crosshair và stamina UI
+│   │   ├── UI/                        # Main menu, crosshair và stamina UI
 │   │   └── Audio/, Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
 │   ├── Tests/EditMode/                # EditMode test
 │   └── UI/                            # Font, icon, texture UI
@@ -85,6 +89,7 @@ Assets/
 └── Settings/                          # URP asset và renderer cho PC/Mobile
 Docs/
 ├── DependencyInjection.md             # Quy ước VContainer, MessagePipe, scope
+├── SceneFlow.md                       # Luồng scene, ISceneLoader, Scene Switcher
 ├── InteractionSystem.md               # Tài liệu interaction
 └── CharacterController.md              # Tài liệu controller, stamina, head bob
 ```
@@ -172,23 +177,23 @@ public sealed class PlayerInventory : PickupReceiverBehaviour
 
 ### Scene mới
 
-1. Tạo scene trong `Assets/_Project/Scenes/` theo nhóm chức năng/chapter phù hợp.
-2. Thêm environment, player, follow camera, main camera và EventSystem cần thiết.
-3. Kiểm tra `MainCamera`, `AudioListener`, `PlayerInput`, layer collision và các reference UI.
-4. Lưu scene, rồi thêm scene vào Build Settings nếu scene phải xuất hiện trong bản build.
+1. Tạo scene trong `Assets/_Project/Scenes/` (scene thử nghiệm đặt trong `Scenes/Dev/`).
+2. Thêm một `LifetimeScope` riêng cho scene, để trống field Parent.
+3. Nếu scene được load bằng code: thêm giá trị vào `SceneId`, thêm `case` vào `SceneCatalog`, thêm scene vào Build Settings. Chi tiết: [Docs/SceneFlow.md](Docs/SceneFlow.md#thêm-scene-mới).
+4. Thêm environment, player, camera và EventSystem cần thiết. Kiểm tra `MainCamera`, `AudioListener`, layer collision và các reference UI.
 5. Test từ một session Unity sạch để phát hiện reference thiếu hoặc asset chưa commit.
 
 ## Kiểm thử
 
-EditMode test cho interaction: `Assets/_Project/Tests/EditMode/PlayerInteractorTests.cs`.
+Chạy qua **Window → General → Test Runner → EditMode → Run All**. Test hiện có:
 
-Chạy qua **Window → General → Test Runner → EditMode → Run All**. Test hiện bao phủ:
+| Assembly | File | Bao phủ |
+|---|---|---|
+| `TheShadowWood.Interaction.Tests` | `Tests/EditMode/PlayerInteractorTests.cs` | Focus object ở tâm màn hình, không tương tác xuyên collider che khuất, gọi action đúng một lần |
+| `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/LifetimeScopeTests.cs` | Container Root/Gameplay build được, MessagePipe publish/subscribe đúng |
+| `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/SceneLoaderTests.cs` | Chặn load trùng, kiểm tra Build Settings, reset `IsLoading` khi lỗi/cancel |
 
-- Focus object tương tác ở tâm màn hình.
-- Không tương tác xuyên qua collider che khuất.
-- Gọi action tương tác đúng một lần.
-
-Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, mở `SampleScene` và play-test di chuyển, nhảy, sprint, cúi, stamina và tương tác.
+Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, Play từ `Bootstrap` và đi hết luồng `Menu` → `Gameplay`. Nếu thay đổi controller hoặc interaction, play-test thêm trong scene test tương ứng.
 
 ## Quy ước đóng góp
 
@@ -213,4 +218,4 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 
 ---
 
-Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Interaction System](Docs/InteractionSystem.md) · [Character Controller](Docs/CharacterController.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Interaction System](Docs/InteractionSystem.md) · [Character Controller](Docs/CharacterController.md)
