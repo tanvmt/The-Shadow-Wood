@@ -14,7 +14,7 @@ namespace TheShadowWood.Core.Scenes
             {
                 case SceneId.Bootstrap: return "Bootstrap";
                 case SceneId.Menu: return "Menu";
-                case SceneId.House: return "House";
+                case SceneId.Gameplay: return "Gameplay";
                 default: throw new ArgumentOutOfRangeException(nameof(sceneId), sceneId, "Scene is not mapped in SceneCatalog.");
             }
         }

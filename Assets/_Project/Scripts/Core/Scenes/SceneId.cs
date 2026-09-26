@@ -4,6 +4,6 @@ namespace TheShadowWood.Core.Scenes
     {
         Bootstrap,
         Menu,
-        House
+        Gameplay
     }
 }
