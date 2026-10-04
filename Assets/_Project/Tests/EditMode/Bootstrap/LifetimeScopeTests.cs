@@ -8,19 +8,15 @@ using VContainer.Unity;
 
 namespace TheShadowWood.Bootstrap.Tests
 {
-    /// <summary>
-    /// Builds the real scope configurations without entering Play Mode:
-    /// each scope's Configure is invoked on a plain ContainerBuilder, mirroring Root -> Gameplay.
-    /// </summary>
+    // GameplayLifetimeScope needs scene objects, so a plain child scope stands in for it.
     public sealed class LifetimeScopeTests
     {
         private static readonly MethodInfo ConfigureMethod =
             typeof(LifetimeScope).GetMethod("Configure", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private GameObject _rootObject;
-        private GameObject _gameplayObject;
         private IObjectResolver _rootContainer;
-        private IScopedObjectResolver _gameplayContainer;
+        private IScopedObjectResolver _sceneContainer;
 
         [SetUp]
         public void SetUp()
@@ -29,22 +25,18 @@ namespace TheShadowWood.Bootstrap.Tests
             _rootObject = new GameObject("TestRootLifetimeScope");
             RootLifetimeScope rootScope = _rootObject.AddComponent<RootLifetimeScope>();
 
-            _gameplayObject = new GameObject("TestGameplayLifetimeScope");
-            GameplayLifetimeScope gameplayScope = _gameplayObject.AddComponent<GameplayLifetimeScope>();
-
             ContainerBuilder rootBuilder = new ContainerBuilder();
             Configure(rootScope, rootBuilder);
             _rootContainer = rootBuilder.Build();
 
-            _gameplayContainer = _rootContainer.CreateScope(builder => Configure(gameplayScope, builder));
+            _sceneContainer = _rootContainer.CreateScope();
         }
 
         [TearDown]
         public void TearDown()
         {
-            _gameplayContainer?.Dispose();
+            _sceneContainer?.Dispose();
             _rootContainer?.Dispose();
-            UnityEngine.Object.DestroyImmediate(_gameplayObject);
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
@@ -61,17 +53,17 @@ namespace TheShadowWood.Bootstrap.Tests
         }
 
         [Test]
-        public void Gameplay_InheritsMessagePipeFromRoot()
+        public void SceneScope_InheritsMessagePipeFromRoot()
         {
-            AssertDelivers(_gameplayContainer);
+            AssertDelivers(_sceneContainer);
         }
 
         [Test]
-        public void Gameplay_CanRegisterSceneScopedBroker_WithRootOptions()
+        public void SceneScope_CanRegisterSceneScopedBroker_WithRootOptions()
         {
-            MessagePipeOptions options = _gameplayContainer.Resolve<MessagePipeOptions>();
+            MessagePipeOptions options = _sceneContainer.Resolve<MessagePipeOptions>();
             using IScopedObjectResolver sceneScope =
-                _gameplayContainer.CreateScope(builder => builder.RegisterMessageBroker<SceneScopedMessage>(options));
+                _sceneContainer.CreateScope(builder => builder.RegisterMessageBroker<SceneScopedMessage>(options));
 
             SceneScopedMessage received = default;
             using IDisposable subscription = sceneScope.Resolve<ISubscriber<SceneScopedMessage>>()
