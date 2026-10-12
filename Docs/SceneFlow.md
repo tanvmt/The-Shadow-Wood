@@ -16,7 +16,7 @@ Bootstrap ──► Menu ──(Bắt đầu)──► Gameplay
 |---|---:|---|---|
 | `Assets/_Project/Scenes/Bootstrap.unity` | 0 | `BootstrapLifetimeScope` | Scene khởi động. `BootstrapFlow` load `Menu` ngay khi scope build xong |
 | `Assets/_Project/Scenes/Menu.unity` | 1 | `MenuLifetimeScope` | Menu chính: nút Bắt đầu load `Gameplay`, nút Thoát |
-| `Assets/_Project/Scenes/Gameplay.unity` | 2 | `GameplayLifetimeScope` | Scene chơi game. Scope đang rỗng, các feature sau sẽ đăng ký vào đây |
+| `Assets/_Project/Scenes/Gameplay.unity` | 2 | `GameplayLifetimeScope` | Scene chơi game. Hiện có Player, camera rig và map thử, xem [PlayerSystem.md](PlayerSystem.md) |
 
 Mọi scene đều load ở chế độ **Single**: scene cũ bị unload, scope và các entry point của scene cũ được dispose. Chỉ `RootLifetimeScope` sống qua các scene.
 

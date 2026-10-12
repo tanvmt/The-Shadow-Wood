@@ -43,22 +43,20 @@ Project sử dụng Universal Render Pipeline (URP) và Unity Input System. Các
 
 Build Settings gồm ba scene theo thứ tự `Bootstrap` → `Menu` → `Gameplay`. `Bootstrap` phải luôn ở index 0. Luồng scene, cách load scene bằng code và cách thêm scene mới: [Docs/SceneFlow.md](Docs/SceneFlow.md).
 
-Scene test cũ của controller (`Playground`, `SampleScene`) vẫn mở và Play trực tiếp được, nhưng không nằm trong luồng game.
-
 ## Điều khiển
 
-Input dùng action map `Player` tại `Assets/X_ThirdParty/StarterAssets/InputSystem/StarterAssets.inputactions`.
+Input dùng action map `Player` tại `Assets/_Project/Scripts/Core/Input/InputSystem_Actions.inputactions`, đọc qua `IInputService`.
 
 | Hành động | Bàn phím/chuột | Gamepad |
 | --- | --- | --- |
 | Di chuyển | `W` `A` `S` `D` hoặc phím mũi tên | Left Stick |
 | Nhìn | Chuột | Right Stick |
-| Nhảy | `Space` | South button |
-| Chạy | Giữ `Left Shift` | Left Trigger |
-| Cúi | `Left Ctrl` | Chưa có binding |
+| Chạy | Giữ `Left Shift` | Nhấn Left Stick |
+| Cúi (bật/tắt) | `C` | East button |
 | Tương tác | `E` | North button |
+| Huỷ / thoát | `Esc` | Chưa có binding |
 
-> Khi thay đổi input action, hãy lưu asset và kiểm tra `PlayerInput` trên Player vẫn dùng action map `Player` với behavior `Send Messages`.
+> Khi thay đổi input action, lưu asset để sinh lại `GameInputActions.cs` và cập nhật bảng quy tắc context. Chi tiết: [Docs/PlayerSystem.md](Docs/PlayerSystem.md#input).
 
 ## Cấu trúc project
 
@@ -71,27 +69,28 @@ Assets/
 │   ├── Materials/                     # Material nội bộ
 │   ├── Models/                        # Model nhân vật, môi trường và prop
 │   ├── Prefabs/                       # Prefab character, environment, system, interactable
-│   ├── Scenes/                        # Bootstrap, Menu, Gameplay (+ Dev/ cho scene thử nghiệm)
+│   ├── Scenes/                        # Bootstrap, Menu, Gameplay
 │   ├── Scripts/                       # C# theo từng domain
 │   │   ├── Bootstrap/                 # Composition root: LifetimeScope và flow của từng scene
-│   │   ├── Core/                      # Contract dùng chung, scene loader
+│   │   ├── Core/                      # Contract dùng chung, scene loader, input service
 │   │   ├── Editor/                    # Công cụ Editor (Scene Switcher)
 │   │   ├── Interaction/               # Raycast, focus và interactable
 │   │   ├── Inventory/                 # Pickup contract
-│   │   ├── Player/                    # Stamina, head bob
-│   │   ├── UI/                        # Main menu, crosshair và stamina UI
+│   │   ├── Player/                    # FPS controller, look, camera rig, focus/rung camera
+│   │   ├── UI/                        # Main menu, crosshair
 │   │   └── Audio/, Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
+│   ├── Settings/                      # VContainerSettings, Input System settings
 │   ├── Tests/EditMode/                # EditMode test
 │   └── UI/                            # Font, icon, texture UI
 ├── Plugins/Demigiant/DOTween/         # DOTween
-├── X_ThirdParty/StarterAssets/        # Unity Starter Assets (FPS controller)
-├── Scenes/SampleScene.unity           # Scene mẫu đang được build
+├── X_ThirdParty/StarterAssets/        # Chỉ giữ Environment/ (mesh, material dựng map thử)
 └── Settings/                          # URP asset và renderer cho PC/Mobile
 Docs/
 ├── DependencyInjection.md             # Quy ước VContainer, MessagePipe, scope
 ├── SceneFlow.md                       # Luồng scene, ISceneLoader, Scene Switcher
+├── PlayerSystem.md                    # Input context, camera, FPS controller
 ├── InteractionSystem.md               # Tài liệu interaction
-└── CharacterController.md              # Tài liệu controller, stamina, head bob
+└── DevelopmentPlan.md                 # Kế hoạch phát triển theo branch
 ```
 
 Không sửa trực tiếp `Library/`, `Temp/`, `Logs/` hoặc các file `.csproj`: chúng do Unity/IDE sinh tự động và đã được `.gitignore` loại trừ.
@@ -100,21 +99,14 @@ Không sửa trực tiếp `Library/`, `Temp/`, `Logs/` hoặc các file `.cspro
 
 ### Player controller
 
-Project dùng **Starter Assets – First Person Controller**. Các prefab nền tảng:
+FPS controller tự viết trong `Assets/_Project/Scripts/Player/`: `PlayerController` (entry point VContainer) ghép các module C# thuần `FirstPersonMotor`, `FirstPersonLook`, `CrouchState`, `StaminaModel`, `HeadBob`. Số liệu chỉnh trong `Assets/_Project/Data/Player/PlayerMovementConfig.asset` và `FirstPersonLookConfig.asset`.
 
-- `Assets/X_ThirdParty/StarterAssets/FirstPersonController/Prefabs/PlayerCapsule.prefab`
-- `Assets/X_ThirdParty/StarterAssets/FirstPersonController/Prefabs/PlayerFollowCamera.prefab`
-- `Assets/X_ThirdParty/StarterAssets/FirstPersonController/Prefabs/MainCamera.prefab`
+Scene gameplay cần hai prefab, `GameplayLifetimeScope` tự tìm chúng trong hierarchy:
 
-Khi tạo scene mới, dùng ba prefab này để có `CharacterController`, `PlayerInput`, Cinemachine camera và input cơ bản. Scene chỉ nên có một camera gắn tag `MainCamera` và một `AudioListener` đang bật.
+- `Assets/_Project/Prefabs/Characters/Player.prefab`: pivot ở chân, đặt `y` bằng mặt sàn.
+- `Assets/_Project/Prefabs/System/CameraRig.prefab`: `Main Camera` + `CinemachineBrain`, `FpsCamera`, `FocusCamera`.
 
-### Stamina và head bob
-
-- `PlayerStamina` giảm stamina khi người chơi vừa di chuyển vừa sprint; mặc định: 100 stamina, tiêu hao 20/giây, hồi 15/giây sau 1,5 giây chờ.
-- `PlayerHeadBob` tạo camera bob khi di chuyển trên mặt đất; cần gán `Camera Target`.
-- `StaminaUIHandler` nhận `PlayerStamina`, `Image` fill và `CanvasGroup` để hiển thị thanh stamina.
-
-Các component nằm trong `Assets/_Project/Scripts/Player/` và `Assets/_Project/Scripts/UI/`. Khi thêm chúng vào Player prefab/scene, hãy gán đủ reference trong Inspector trước khi play-test.
+Hệ thống khác muốn khoá player hay hiện con trỏ thì push context qua `IInputService.PushContext`. Muốn đưa camera tới một điểm nhìn (TV, puzzle) thì dùng `ICameraFocusService`; rung camera dùng `ICameraShakeService`. Chi tiết: [Docs/PlayerSystem.md](Docs/PlayerSystem.md).
 
 ### Interaction và pickup
 
@@ -122,7 +114,7 @@ Luồng tương tác: camera raycast từ giữa màn hình → `PlayerInteracto
 
 | Thành phần | Vai trò |
 | --- | --- |
-| `PlayerInteractor` | Đặt cùng GameObject với `PlayerInput`; tự lấy `MainCamera` nếu chưa gán. Khoảng cách mặc định 3 m. |
+| `PlayerInteractor` | Tự lấy `Camera.main` nếu chưa gán. Khoảng cách mặc định 3 m. Vẫn nhận input qua `PlayerInput` + `Send Messages`, chưa gắn vào `Player.prefab` mới; chuyển sang `IInputService` ở `feat/interaction-di`. |
 | `InteractableBehaviour` | Base class cho mọi đối tượng tương tác. |
 | `DestroyOnInteract` | Object dùng một lần; tắt collider rồi bị destroy khi tương tác thành công. |
 | `PickupItem` | Chỉ hủy world item khi receiver trên player chấp nhận item. |
@@ -137,10 +129,10 @@ Mã nguồn chia assembly để kiểm soát dependency và rút ngắn thời g
 
 ```text
 Core ───────► Interaction ───────► UI
-                  │
-                  └──────────────► Inventory
-
-Player ──────────────────────────► UI
+  │               │
+  │               ├──────────────► Inventory
+  │               └──────────────► Player
+  └──────────────────────────────► Player ───────► UI
 ```
 
 Nếu cần tham chiếu domain khác, cập nhật `.asmdef` tương ứng qua Inspector của Unity. Tránh tham chiếu sang `X_ThirdParty` nếu có thể; thay đổi ở đó dễ bị ghi đè khi nâng version asset.
@@ -177,10 +169,10 @@ public sealed class PlayerInventory : PickupReceiverBehaviour
 
 ### Scene mới
 
-1. Tạo scene trong `Assets/_Project/Scenes/` (scene thử nghiệm đặt trong `Scenes/Dev/`).
+1. Tạo scene trong `Assets/_Project/Scenes/`.
 2. Thêm một `LifetimeScope` riêng cho scene, để trống field Parent.
 3. Nếu scene được load bằng code: thêm giá trị vào `SceneId`, thêm `case` vào `SceneCatalog`, thêm scene vào Build Settings. Chi tiết: [Docs/SceneFlow.md](Docs/SceneFlow.md#thêm-scene-mới).
-4. Thêm environment, player, camera và EventSystem cần thiết. Kiểm tra `MainCamera`, `AudioListener`, layer collision và các reference UI.
+4. Thêm environment, `Player.prefab`, `CameraRig.prefab` và EventSystem cần thiết. Kiểm tra chỉ có một `AudioListener`, layer collision và các reference UI. Setup player: [Docs/PlayerSystem.md](Docs/PlayerSystem.md#setup-scene-gameplay).
 5. Test từ một session Unity sạch để phát hiện reference thiếu hoặc asset chưa commit.
 
 ## Kiểm thử
@@ -192,8 +184,10 @@ Chạy qua **Window → General → Test Runner → EditMode → Run All**. Test
 | `TheShadowWood.Interaction.Tests` | `Tests/EditMode/PlayerInteractorTests.cs` | Focus object ở tâm màn hình, không tương tác xuyên collider che khuất, gọi action đúng một lần |
 | `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/LifetimeScopeTests.cs` | Container Root/Gameplay build được, MessagePipe publish/subscribe đúng |
 | `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/SceneLoaderTests.cs` | Chặn load trùng, kiểm tra Build Settings, reset `IsLoading` khi lỗi/cancel |
+| `TheShadowWood.Core.Tests` | `Tests/EditMode/Core/InputContext*Tests.cs` | Bảng quy tắc context, push/dispose context stack |
+| `TheShadowWood.Player.Tests` | `Tests/EditMode/Player/*Tests.cs` | Look, motor, crouch, stamina, head bob |
 
-Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, Play từ `Bootstrap` và đi hết luồng `Menu` → `Gameplay`. Nếu thay đổi controller hoặc interaction, play-test thêm trong scene test tương ứng.
+Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, Play từ `Bootstrap` và đi hết luồng `Menu` → `Gameplay`. Nếu thay đổi controller hoặc interaction, play-test thêm trong `Gameplay`.
 
 ## Quy ước đóng góp
 
@@ -213,9 +207,10 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 | Package/compile lỗi sau clone | Đóng Unity, xóa **chỉ** `Library/` rồi mở lại để Unity import lại package/asset. |
 | Không thể tương tác | Kiểm tra camera `MainCamera`, `PlayerInteractor`, collider, visibility layer và vật cản gần camera. |
 | Pickup không biến mất | Kiểm tra player có subclass `PickupReceiverBehaviour` và `TryReceive` trả `true`. |
-| Không nhận phím tương tác | Kiểm tra `PlayerInput` dùng map `Player`, behavior `Send Messages`, và `PlayerInteractor` cùng GameObject. |
+| Player không đi/nhìn được, con trỏ không khoá | Có context `UI`/`Focus`/`Puzzle` chưa được dispose. Kiểm tra `IInputService.Context` và class đã push context. |
+| Player lún nửa dưới sàn | Pivot của Player phải ở chân: `Visual` và `CameraRoot` nằm trên pivot, đặt `y` của Player bằng mặt sàn. |
 | Hai camera cùng nghe âm thanh | Tắt hoặc xóa `AudioListener` thừa; chỉ để một listener enabled. |
 
 ---
 
-Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Interaction System](Docs/InteractionSystem.md) · [Character Controller](Docs/CharacterController.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md)
