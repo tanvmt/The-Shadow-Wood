@@ -4,43 +4,121 @@ using VContainer.Unity;
 
 namespace TheShadowWood.Player
 {
-    public sealed class PlayerController : IStartable, ILateTickable
+    public sealed class PlayerController : IStartable, ITickable, ILateTickable
     {
+        private const float SprintSpeedMargin = 0.1f;
+
         private readonly PlayerView _view;
         private readonly IInputService _input;
+        private readonly PlayerMovementConfig _config;
         private readonly FirstPersonLook _look;
+        private readonly FirstPersonMotor _motor;
+        private readonly CrouchState _crouch;
+        private readonly StaminaModel _stamina;
+        private readonly HeadBob _headBob;
+
+        private Vector3 _cameraRootBase;
+        private float _horizontalSpeed;
+        private bool _isSprinting;
 
         public PlayerController(PlayerView view, IInputService input)
         {
             _view = view;
             _input = input;
+            _config = view.MovementConfig;
             _look = new FirstPersonLook(view.LookConfig);
+            _motor = new FirstPersonMotor(_config);
+            _crouch = new CrouchState(_config);
+            _stamina = new StaminaModel(_config);
+            _headBob = new HeadBob(_config);
         }
+
+        public StaminaModel Stamina => _stamina;
+        public bool IsCrouching => _crouch.IsCrouching;
+        public bool IsSprinting => _isSprinting;
 
         public void Start()
         {
+            _cameraRootBase = _view.CameraRoot.localPosition;
+
             float authoredPitch = Mathf.DeltaAngle(0f, _view.CameraRoot.localEulerAngles.x);
             _look.SetPitch(authoredPitch);
-            ApplyPitch();
+
+            ApplyControllerHeight();
+            ApplyCameraRoot();
+        }
+
+        public void Tick()
+        {
+            float deltaTime = Time.deltaTime;
+            CharacterController controller = _view.Controller;
+
+            bool canStand = !_crouch.IsCrouching || !IsCeilingBlocked();
+            _crouch.Tick(_input.CrouchPressed, canStand, deltaTime);
+            ApplyControllerHeight();
+
+            Vector2 move = _input.Move;
+            bool wantsSprint = _input.SprintHeld && move.sqrMagnitude > 0f && !_crouch.IsCrouching && _stamina.CanSprint;
+            float maxSpeed = _crouch.IsCrouching ? _config.CrouchSpeed
+                : wantsSprint ? _config.SprintSpeed
+                : _config.WalkSpeed;
+
+            Transform body = _view.Body;
+            Vector3 moveWorld = body.right * move.x + body.forward * move.y;
+            Vector3 velocity = _motor.Tick(moveWorld, maxSpeed, controller.isGrounded, deltaTime);
+            controller.Move(velocity * deltaTime);
+
+            Vector3 actual = controller.velocity;
+            _horizontalSpeed = new Vector2(actual.x, actual.z).magnitude;
+            _isSprinting = wantsSprint && _horizontalSpeed > _config.WalkSpeed + SprintSpeedMargin;
+            _stamina.Tick(_isSprinting, deltaTime);
         }
 
         public void LateTick()
         {
+            float deltaTime = Time.deltaTime;
+
             // Read Look first: it updates LookIsPointerDelta.
             Vector2 look = _input.Look;
-            if (look == Vector2.zero)
+            if (look != Vector2.zero)
             {
-                return;
+                float yawDelta = _look.Tick(look, _input.LookIsPointerDelta, deltaTime);
+                _view.Body.Rotate(0f, yawDelta, 0f, Space.World);
             }
 
-            float yawDelta = _look.Tick(look, _input.LookIsPointerDelta, Time.deltaTime);
-            _view.Body.Rotate(0f, yawDelta, 0f, Space.World);
-            ApplyPitch();
+            float frequency = _crouch.IsCrouching ? _config.CrouchBobFrequency
+                : _isSprinting ? _config.SprintBobFrequency
+                : _config.WalkBobFrequency;
+            _headBob.Tick(_horizontalSpeed, _view.Controller.isGrounded, frequency, deltaTime);
+
+            ApplyCameraRoot();
         }
 
-        private void ApplyPitch()
+        private void ApplyControllerHeight()
         {
-            _view.CameraRoot.localRotation = Quaternion.Euler(_look.Pitch, 0f, 0f);
+            CharacterController controller = _view.Controller;
+            controller.height = _crouch.Height;
+            controller.center = new Vector3(0f, _crouch.Height * 0.5f, 0f);
+        }
+
+        private void ApplyCameraRoot()
+        {
+            Vector2 bob = _headBob.Offset;
+            float crouchDrop = _config.StandingHeight - _crouch.Height;
+
+            Transform cameraRoot = _view.CameraRoot;
+            cameraRoot.localPosition = new Vector3(
+                _cameraRootBase.x + bob.x,
+                _cameraRootBase.y - crouchDrop + bob.y,
+                _cameraRootBase.z);
+            cameraRoot.localRotation = Quaternion.Euler(_look.Pitch, 0f, 0f);
+        }
+
+        private bool IsCeilingBlocked()
+        {
+            float radius = _config.CeilingCheckRadius;
+            Vector3 top = _view.Body.position + Vector3.up * (_config.StandingHeight - radius);
+            return Physics.CheckSphere(top, radius, _config.CeilingMask, QueryTriggerInteraction.Ignore);
         }
     }
 }
