@@ -1,4 +1,5 @@
 using MessagePipe;
+using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Scenes;
 using VContainer;
 using VContainer.Unity;
@@ -14,6 +15,8 @@ namespace TheShadowWood.Bootstrap
 
             builder.Register<UnitySceneBackend>(Lifetime.Singleton).As<ISceneBackend>();
             builder.Register<SceneLoader>(Lifetime.Singleton).As<ISceneLoader>();
+
+            builder.Register<InputService>(Lifetime.Singleton).As<IInputService>();
         }
     }
 }

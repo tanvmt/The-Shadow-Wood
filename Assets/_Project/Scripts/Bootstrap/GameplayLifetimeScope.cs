@@ -1,3 +1,5 @@
+using TheShadowWood.Core.Cameras;
+using TheShadowWood.Player;
 using VContainer;
 using VContainer.Unity;
 
@@ -7,6 +9,13 @@ namespace TheShadowWood.Bootstrap
     {
         protected override void Configure(IContainerBuilder builder)
         {
+            // Scene needs one Player and one CameraRig.
+            builder.RegisterComponentInHierarchy<PlayerView>();
+            builder.RegisterComponentInHierarchy<CameraRig>();
+            builder.Register<CameraFocusService>(Lifetime.Singleton).As<ICameraFocusService>();
+            builder.Register<CameraShakeService>(Lifetime.Singleton).As<ICameraShakeService>();
+            builder.RegisterEntryPoint<CameraRigBinder>();
+            builder.RegisterEntryPoint<PlayerController>();
         }
     }
 }

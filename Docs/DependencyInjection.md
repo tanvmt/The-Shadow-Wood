@@ -122,7 +122,7 @@ protected override void Configure(IContainerBuilder builder)
 }
 ```
 
-Cách này đã có test tại `LifetimeScopeTests.Gameplay_CanRegisterSceneScopedBroker_WithRootOptions`.
+Cách này đã có test tại `LifetimeScopeTests.SceneScope_CanRegisterSceneScopedBroker_WithRootOptions`.
 
 ### GlobalMessagePipe
 

@@ -5,6 +5,7 @@
         "VContainer",
         "UniTask",
         "MessagePipe",
+        "Unity.InputSystem",
         "GUID:067f4c7290931e748b6abff3515198a4"
     ],
     "includePlatforms": [],
