@@ -44,6 +44,18 @@ namespace TheShadowWood.Player.Tests
         }
 
         [Test]
+        public void SensitivityScale_MultipliesMouseAndStick()
+        {
+            FirstPersonLook look = new FirstPersonLook(_config) { SensitivityScale = 2f };
+
+            float mouseYaw = look.Tick(new Vector2(100f, 0f), isPointerDelta: true, deltaTime: 0.016f);
+            float stickYaw = look.Tick(new Vector2(1f, 0f), isPointerDelta: false, deltaTime: 0.5f);
+
+            Assert.That(mouseYaw, Is.EqualTo(20f).Within(1e-4f));
+            Assert.That(stickYaw, Is.EqualTo(180f).Within(1e-4f));
+        }
+
+        [Test]
         public void MovingUp_LooksUp()
         {
             FirstPersonLook look = new FirstPersonLook(_config);

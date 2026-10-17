@@ -6,10 +6,10 @@ Tài liệu quy ước DI của **The Shadow Wood**: VContainer làm container, 
 
 ```text
 RootLifetimeScope              (prefab, tạo qua VContainerSettings, DontDestroyOnLoad)
-│  MessagePipe, ISceneLoader, service sống suốt game
+│  MessagePipe, ISceneLoader, ISceneTransition, IScreenFader, IInputService, IGameSettings
 │
 ├── BootstrapLifetimeScope     (scene Bootstrap)  BootstrapFlow
-├── MenuLifetimeScope          (scene Menu)       MainMenuView, MainMenuPresenter
+├── MenuLifetimeScope          (scene Menu)       UIScreenService, main menu, settings
 └── GameplayLifetimeScope      (scene Gameplay)   service, entry point và view của gameplay
 ```
 
@@ -17,9 +17,9 @@ Tại một thời điểm chỉ có một scope scene tồn tại, vì mọi sc
 
 | Scope | Vị trí | Đăng ký gì |
 |---|---|---|
-| `RootLifetimeScope` | `Assets/_Project/Prefabs/System/RootLifetimeScope.prefab` | MessagePipe, `ISceneLoader`/`ISceneBackend`, và service sống suốt game (input, audio, settings…) |
+| `RootLifetimeScope` | `Assets/_Project/Prefabs/System/RootLifetimeScope.prefab` | MessagePipe, `ISceneLoader`/`ISceneBackend`, `ISceneTransition`, `IScreenFader`, `IInputService`, `IGameSettings`, và service sống suốt game khác (audio…) |
 | `BootstrapLifetimeScope` | GameObject trong `Bootstrap.unity` | `BootstrapFlow` |
-| `MenuLifetimeScope` | GameObject trong `Menu.unity` | View và presenter của menu |
+| `MenuLifetimeScope` | GameObject trong `Menu.unity` | `UIScreenService`, view và presenter của main menu và settings |
 | `GameplayLifetimeScope` | GameObject trong `Gameplay.unity` | Service, entry point và component chỉ tồn tại trong scene gameplay |
 
 `Assets/_Project/Settings/VContainerSettings.asset` trỏ tới prefab Root và nằm trong **Player Settings → Preloaded Assets**. Vì vậy Root luôn được tạo trước, kể cả khi bấm Play trực tiếp ở một scene bất kỳ.
@@ -53,6 +53,8 @@ Nguyên tắc:
 | `Transient` | Tạo mới mỗi lần resolve. |
 
 Service đăng ký ở Gameplay **không được** inject vào service ở Root. Chiều phụ thuộc luôn từ scope con lên scope cha.
+
+Service giữ vé (handle `IDisposable`) trên một thứ ở Root, như vé context của `IInputService` hay vé `IGamePause`, thì đăng ký ở **scope scene** và trả vé trong `Dispose()`. Scene unload thì scope tự dispose, không để lại vé mồ côi làm kẹt scene sau. Ví dụ: `UIScreenService`, `GamePause`. Tương tự, class ở scene đăng ký event của service Root (ví dụ `IGameSettings.Changed`) phải huỷ đăng ký trong `Dispose()`.
 
 ## MessagePipe
 

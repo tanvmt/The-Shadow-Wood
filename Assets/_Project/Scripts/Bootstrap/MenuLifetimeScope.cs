@@ -8,8 +8,11 @@ namespace TheShadowWood.Bootstrap
     {
         protected override void Configure(IContainerBuilder builder)
         {
+            builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<MainMenuView>();
+            builder.RegisterComponentInHierarchy<SettingsScreen>();
             builder.RegisterEntryPoint<MainMenuPresenter>();
+            builder.RegisterEntryPoint<SettingsPresenter>();
         }
     }
 }

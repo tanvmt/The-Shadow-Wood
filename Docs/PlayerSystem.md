@@ -62,7 +62,8 @@ Asset:
 | Chạy | Giữ `Left Shift` | Nhấn Left Stick | Giữ |
 | Cúi | `C` | East button | Bật/tắt |
 | Tương tác | `E` | North button | |
-| Huỷ / thoát | `Esc` | Chưa có binding | |
+| Huỷ / thoát (`Cancel`) | `Esc` | East button (B), Start | Thoát TV, đóng màn hình |
+| Pause | `Esc` | Start | Chỉ bật ở `Gameplay` |
 
 Không có jump: nhà là màn chơi trong nhà, nhảy dễ phá nhịp horror.
 
@@ -70,31 +71,35 @@ Không có jump: nhà là màn chơi trong nhà, nhảy dễ phá nhịp horror.
 
 Hệ thống nào cần chiếm quyền điều khiển thì push một context và giữ handle, dispose handle để trả lại. Context trên đỉnh stack quyết định action nào bật và con trỏ:
 
-| Context | Move | Look | Sprint | Crouch | Interact | Cancel | Con trỏ | Dùng cho |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
-| `Gameplay` | ✓ | ✓ | ✓ | ✓ | ✓ | – | Khoá, ẩn | Mặc định (đáy stack) |
-| `Focus` | – | – | – | – | – | ✓ | Khoá, ẩn | TV, cutscene, ending |
-| `Puzzle` | – | – | – | – | ✓ | ✓ | Hiện | Lá bùa, keypad, bàn thờ |
-| `UI` | – | – | – | – | – | ✓ | Hiện | Note, pause, menu |
+| Context | Move | Look | Sprint | Crouch | Interact | Cancel | Pause | Con trỏ | Dùng cho |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
+| `Gameplay` | ✓ | ✓ | ✓ | ✓ | ✓ | – | ✓ | Khoá, ẩn | Mặc định (đáy stack) |
+| `Focus` | – | – | – | – | – | ✓ | – | Khoá, ẩn | TV, cutscene, ending |
+| `Puzzle` | – | – | – | – | ✓ | ✓ | – | Hiện | Lá bùa, keypad, bàn thờ |
+| `UI` | – | – | – | – | – | ✓ | – | Hiện | Note, pause, menu |
+
+`Pause` và `Cancel` dùng chung phím Esc nên mỗi context bật đúng một trong hai.
+
+Màn hình UI không tự push context: mở qua `IUIScreenService.Open`, service push `UI` và trả lại khi đóng. Xem [UISystem.md](UISystem.md). Push tay chỉ dành cho thứ không phải màn hình:
 
 ```csharp
-public sealed class ReadablePresenter : IDisposable
+public sealed class SomeCutscene : IDisposable
 {
     private readonly IInputService _input;
-    private IDisposable _uiContext;
+    private IDisposable _focusContext;
 
-    public void Open()
+    public void Begin()
     {
-        _uiContext ??= _input.PushContext(InputContext.UI);
+        _focusContext ??= _input.PushContext(InputContext.Focus);
     }
 
-    public void Close()
+    public void End()
     {
-        _uiContext?.Dispose();
-        _uiContext = null;
+        _focusContext?.Dispose();
+        _focusContext = null;
     }
 
-    public void Dispose() => Close();
+    public void Dispose() => End();
 }
 ```
 
@@ -104,7 +109,7 @@ Quy tắc:
 - Handle dispose được theo thứ tự bất kỳ và dispose nhiều lần không lỗi. Luôn dispose trong `Dispose()` của class giữ handle để không kẹt context khi unload scene.
 - Map `UI` không bị đụng tới, `EventSystem` dùng nó bình thường.
 - Unity nhả khoá con trỏ khi cửa sổ mất focus. `InputService` khoá lại khi focus quay về, theo context hiện tại.
-- Menu push context `UI` khi mở (`MainMenuPresenter`).
+- Menu mở qua `UIScreenService`, nên context `UI` được push khi vào Menu và trả lại khi scene Menu unload.
 - `Look` của chuột là delta mỗi frame, của gamepad là giá trị stick. `LookIsPointerDelta` cho biết nguồn để `FirstPersonLook` không nhân `deltaTime` với delta chuột. Đọc `Look` trước `LookIsPointerDelta` trong cùng frame.
 
 Thêm action mới: sửa `InputSystem_Actions.inputactions`, lưu để sinh lại `GameInputActions.cs`, thêm cột vào `InputContextRule` và `InputContextRules`, thêm property vào `IInputService`/`InputService`, cập nhật `InputContextRulesTests`. Trường hợp như "vẫn đi được nhưng không nhìn được" thì thêm context mới vào bảng, không thêm cơ chế khoá riêng.
@@ -172,7 +177,7 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 | Check trần | `Physics.CheckSphere` tại đỉnh chiều cao đứng, bán kính `Ceiling Check Radius`, theo `Ceiling Mask`. Mask không được chứa layer `Player` |
 | `StaminaModel` | Tiêu hao khi sprint thực sự, chờ `Regen Delay` rồi hồi. Cạn về 0 thì khoá sprint tới khi hồi đủ `Stamina To Resume Sprint`. `PlayerController.Stamina` expose `Current`, `Ratio`, `IsExhausted` cho UI |
 | `HeadBob` | Offset tính lại từ đầu mỗi frame, không cộng dồn. Biên độ tỉ lệ với tốc độ so với `Walk Speed`. Đứng yên hoặc trên không thì offset trở về 0 theo `Bob Return Speed` |
-| `FirstPersonLook` | Chuột: độ/pixel, không nhân `deltaTime`. Gamepad: độ/giây. Pitch clamp trong `[Min Pitch, Max Pitch]`, giữ góc pitch đặt sẵn trên `CameraRoot` lúc Start |
+| `FirstPersonLook` | Chuột: độ/pixel, không nhân `deltaTime`. Gamepad: độ/giây. Cả hai nhân thêm `SensitivityScale` (độ nhạy người chơi chỉnh trong Settings, `PlayerController` cập nhật qua `IGameSettings.Changed`). Pitch clamp trong `[Min Pitch, Max Pitch]`, giữ góc pitch đặt sẵn trên `CameraRoot` lúc Start |
 
 ### Config
 
@@ -214,7 +219,7 @@ Test nhanh camera bằng `CameraSandboxDebug`: thêm vào danh sách **Auto Inje
 |---|---|---|
 | `TheShadowWood.Core.Tests` | `Core/InputContextRulesTests.cs` | Bảng quy tắc từng context |
 | `TheShadowWood.Core.Tests` | `Core/InputContextStackTests.cs` | Push/dispose lồng nhau, dispose sai thứ tự, dispose hai lần, event `Changed` |
-| `TheShadowWood.Player.Tests` | `Player/FirstPersonLookTests.cs` | Sensitivity chuột/gamepad, invert, clamp pitch |
+| `TheShadowWood.Player.Tests` | `Player/FirstPersonLookTests.cs` | Sensitivity chuột/gamepad, `SensitivityScale` từ settings, invert, clamp pitch |
 | `TheShadowWood.Player.Tests` | `Player/FirstPersonMotorTests.cs` | Tăng tốc, gravity, grounded, terminal velocity |
 | `TheShadowWood.Player.Tests` | `Player/CrouchStateTests.cs` | Toggle, chuyển chiều cao, giữ cúi khi trần chặn |
 | `TheShadowWood.Player.Tests` | `Player/StaminaModelTests.cs` | Tiêu hao, regen delay, khoá khi cạn |

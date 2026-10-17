@@ -1,6 +1,5 @@
 using System;
 using Cysharp.Threading.Tasks;
-using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Scenes;
 using UnityEngine;
 using VContainer.Unity;
@@ -10,37 +9,36 @@ namespace TheShadowWood.UI
     public sealed class MainMenuPresenter : IStartable, IDisposable
     {
         private readonly MainMenuView _view;
-        private readonly ISceneLoader _sceneLoader;
-        private readonly IInputService _input;
-        private IDisposable _uiContext;
+        private readonly SettingsScreen _settings;
+        private readonly ISceneTransition _transition;
+        private readonly IUIScreenService _screens;
 
-        public MainMenuPresenter(MainMenuView view, ISceneLoader sceneLoader, IInputService input)
+        public MainMenuPresenter(MainMenuView view, SettingsScreen settings, ISceneTransition transition, IUIScreenService screens)
         {
             _view = view;
-            _sceneLoader = sceneLoader;
-            _input = input;
+            _settings = settings;
+            _transition = transition;
+            _screens = screens;
         }
 
         public void Start()
         {
-            // Free the cursor and block gameplay actions while the menu is open.
-            _uiContext = _input.PushContext(InputContext.UI);
-
             _view.StartButton.onClick.AddListener(OnStartClicked);
+            _view.SettingsButton.onClick.AddListener(OnSettingsClicked);
             _view.QuitButton.onClick.AddListener(OnQuitClicked);
+
+            _screens.Open(_view);
         }
 
         public void Dispose()
         {
-            _uiContext?.Dispose();
-            _uiContext = null;
-
             if (_view == null)
             {
                 return;
             }
 
             _view.StartButton.onClick.RemoveListener(OnStartClicked);
+            _view.SettingsButton.onClick.RemoveListener(OnSettingsClicked);
             _view.QuitButton.onClick.RemoveListener(OnQuitClicked);
         }
 
@@ -54,11 +52,16 @@ namespace TheShadowWood.UI
             // Block repeated clicks while the next scene loads; the menu is unloaded on success.
             _view.SetInteractable(false);
 
-            bool loaded = await _sceneLoader.LoadAsync(SceneId.Gameplay);
+            bool loaded = await _transition.LoadAsync(SceneId.Gameplay);
             if (!loaded && _view != null)
             {
                 _view.SetInteractable(true);
             }
+        }
+
+        private void OnSettingsClicked()
+        {
+            _screens.Open(_settings);
         }
 
         private void OnQuitClicked()
