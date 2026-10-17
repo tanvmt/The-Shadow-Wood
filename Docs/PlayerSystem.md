@@ -145,7 +145,7 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 
 | Object | Giá trị |
 |---|---|
-| `Player` (root) | Layer `Player`. `CharacterController`: Height 1.8, Center (0, 0.9, 0), Radius 0.5, Skin Width 0.08. `PlayerView` |
+| `Player` (root) | Layer `Player`. `CharacterController`: Height 1.8, Center (0, 0.9, 0), Radius 0.5, Skin Width 0.08. `PlayerView`. `PlayerInteractorView` (xem [InteractionSystem.md](InteractionSystem.md)) |
 | `CameraRoot` | Local (0, 1.6, 0). Pitch đặt ở đây |
 | `Visual` | Capsule, local (0, 0.9, 0), scale (1, 0.9, 1) |
 
@@ -203,7 +203,7 @@ Scene `Gameplay` hiện vừa là scene chơi vừa là sandbox: có `Map` (dự
 
 1. Kéo `Player.prefab` vào scene, `y` bằng mặt sàn.
 2. Kéo `CameraRig.prefab` vào scene. Xoá `Main Camera` mặc định của scene để chỉ còn một camera và một `AudioListener`.
-3. `GameplayLifetimeScope` tự tìm `PlayerView` và `CameraRig` trong hierarchy (`RegisterComponentInHierarchy`), không cần kéo reference.
+3. `GameplayLifetimeScope` tự tìm `PlayerView`, `PlayerInteractorView` và `CameraRig` trong hierarchy (`RegisterComponentInHierarchy`), không cần kéo reference. Camera của scene được đăng ký từ `CameraRig.OutputCamera`, không cần tag `MainCamera`.
 4. Kiểm tra `PlayerView` đã gán `Controller`, `Camera Root`, `Look Config`, `Movement Config`.
 
 Test nhanh camera bằng `CameraSandboxDebug`: thêm vào danh sách **Auto Inject Game Objects** của `GameplayLifetimeScope`, gán `Focus Pose`. Khi Play: `F` focus/thả, `Esc` thả, `G` rung. Bỏ component này khỏi scene khi dựng màn thật.
@@ -224,7 +224,4 @@ Play-test thủ công khi sửa phần player: đi/chạy/cúi dưới vật th�
 
 ## Việc còn lại
 
-- `PlayerInteractor` vẫn đọc input qua `PlayerInput` + `SendMessages` và từng nằm trên `PlayerCapsule` (đã xoá), nên hiện không có player nào tương tác được. Chuyển sang `IInputService` ở branch `feat/interaction-di`.
-- `Main Camera` trong `CameraRig.prefab` đang `Untagged`, trong khi `PlayerInteractor` lấy camera qua `Camera.main`. Gắn tag `MainCamera` khi làm `feat/interaction-di`.
-- `TVInteractable` vẫn tween camera bằng DOTween. Chuyển sang `ICameraFocusService` ở `feat/tv-broadcast`.
 - Chưa có stamina HUD và footstep. `PlayerController` sẽ publish `PlayerStateMessage`/`FootstepMessage` khi có UI và AudioService.

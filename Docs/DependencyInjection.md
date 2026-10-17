@@ -32,14 +32,15 @@ Scope trong scene **để trống field Parent**. Khi không có parent, VContai
 |---|---|---|
 | Service C# thuần, có interface | `builder.Register<Impl>(Lifetime.Singleton).As<IService>()` | Flag, inventory, player control |
 | Class cần chạy theo vòng đời Unity | `builder.RegisterEntryPoint<T>()` | `IStartable`, `ITickable`, `ILateTickable`, `IAsyncStartable`, `IDisposable` |
-| MonoBehaviour có sẵn trong scene | `builder.RegisterComponentInHierarchy<T>()` | View của Player, camera rig |
+| MonoBehaviour có sẵn trong scene, đúng một instance và scene bắt buộc phải có | `builder.RegisterComponentInHierarchy<T>()` | `PlayerView`, `CameraRig`, prompt, crosshair |
+| Nhiều MonoBehaviour do level designer đặt, số lượng không cố định | Đặt dưới một root, thêm root vào **Auto Inject Game Objects** của scope | Interactables (TV, cửa, pickup) |
 | Asset cấu hình | `[SerializeField]` trên scope + `builder.RegisterInstance(asset)` | ScriptableObject config |
 | Prefab spawn lúc runtime | `IObjectResolver.Instantiate(prefab)` | Object cần được inject |
 
 Nguyên tắc:
 
 - Logic đặt trong class C# thuần, nhận dependency qua constructor. MonoBehaviour chỉ giữ reference và nhận callback Unity.
-- MonoBehaviour được inject qua method `[Inject] public void Construct(...)`. Không dùng field injection.
+- MonoBehaviour được inject qua method `[Inject] public void Construct(...)`. Không dùng field injection. `Awake`/`OnEnable` có thể chạy trước `Construct`, nên chỉ dùng dependency từ `Start` trở đi hoặc trong callback của event.
 - Không gọi `FindObjectOfType`, `GameObject.Find` hoặc singleton tĩnh để lấy service.
 - Mỗi service expose qua interface nằm ở assembly contract (thường là `Core`), implementation ở assembly của feature.
 
@@ -164,3 +165,5 @@ Bootstrap ──► tất cả assembly feature   (composition root)
 | Hai `RootLifetimeScope` khi Play | Có thêm instance đặt tay trong scene. Chỉ tạo Root qua `VContainerSettings`. |
 | Scene scope không thấy service của Root | Field Parent bị gán nhầm, hoặc `VContainerSettings` không nằm trong Preloaded Assets. |
 | Callback vẫn chạy sau khi đổi scene | Subscription chưa được dispose. Class chưa implement `IDisposable` hoặc chưa được đăng ký qua container. |
+| MonoBehaviour trong scene không chạy, `Construct` không được gọi, không có lỗi | Object không được đăng ký và không nằm dưới root nào trong **Auto Inject Game Objects**. |
+| `Construct` bị gọi hai lần, event bị đăng ký đôi | Object vừa đăng ký bằng `RegisterComponentInHierarchy` vừa nằm dưới root auto-inject. Chỉ chọn một cách. |
