@@ -33,6 +33,9 @@ namespace TheShadowWood.Bootstrap
             builder.RegisterComponentInHierarchy<SettingsScreen>();
             builder.RegisterEntryPoint<PausePresenter>();
             builder.RegisterEntryPoint<SettingsPresenter>();
+
+            builder.RegisterComponentInHierarchy<SubtitleView>().As<ISubtitleView>();
+            builder.RegisterEntryPoint<SubtitleService>();
         }
     }
 }
