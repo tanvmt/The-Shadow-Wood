@@ -9,13 +9,13 @@ namespace TheShadowWood.UI
     public sealed class MainMenuPresenter : IStartable, IDisposable
     {
         private readonly MainMenuView _view;
-        private readonly ISceneLoader _sceneLoader;
+        private readonly ISceneTransition _transition;
         private readonly IUIScreenService _screens;
 
-        public MainMenuPresenter(MainMenuView view, ISceneLoader sceneLoader, IUIScreenService screens)
+        public MainMenuPresenter(MainMenuView view, ISceneTransition transition, IUIScreenService screens)
         {
             _view = view;
-            _sceneLoader = sceneLoader;
+            _transition = transition;
             _screens = screens;
         }
 
@@ -48,7 +48,7 @@ namespace TheShadowWood.UI
             // Block repeated clicks while the next scene loads; the menu is unloaded on success.
             _view.SetInteractable(false);
 
-            bool loaded = await _sceneLoader.LoadAsync(SceneId.Gameplay);
+            bool loaded = await _transition.LoadAsync(SceneId.Gameplay);
             if (!loaded && _view != null)
             {
                 _view.SetInteractable(true);

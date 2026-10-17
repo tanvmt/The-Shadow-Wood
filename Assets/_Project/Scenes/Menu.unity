@@ -638,6 +638,7 @@ GameObject:
   - component: {fileID: 1723480706}
   - component: {fileID: 1723480705}
   - component: {fileID: 1723480709}
+  - component: {fileID: 1723480710}
   m_Layer: 5
   m_Name: '[MainCanvas]'
   m_TagString: Untagged
@@ -740,8 +741,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36d9bebcb7483da48ad36091595fdacb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TheShadowWood.UI::TheShadowWood.UI.MainMenuView
+  closeOnCancel: 1
+  firstSelected: {fileID: 0}
   startButton: {fileID: 1075589133}
   quitButton: {fileID: 1572986399}
+--- !u!225 &1723480710
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1723480704}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1743330139
 GameObject:
   m_ObjectHideFlags: 0
@@ -938,7 +953,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 0}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
