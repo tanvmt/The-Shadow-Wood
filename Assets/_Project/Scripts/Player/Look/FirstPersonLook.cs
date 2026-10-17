@@ -13,11 +13,14 @@ namespace TheShadowWood.Player
 
         public float Pitch { get; private set; }
 
+        // Player setting on top of the config values.
+        public float SensitivityScale { get; set; } = 1f;
+
         public float Tick(Vector2 look, bool isPointerDelta, float deltaTime)
         {
-            float scale = isPointerDelta
+            float scale = SensitivityScale * (isPointerDelta
                 ? _config.MouseSensitivity
-                : _config.GamepadSensitivity * deltaTime;
+                : _config.GamepadSensitivity * deltaTime);
 
             float yawDelta = look.x * scale;
 

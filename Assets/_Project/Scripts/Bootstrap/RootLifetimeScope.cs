@@ -1,6 +1,7 @@
 using MessagePipe;
 using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Scenes;
+using TheShadowWood.Core.Settings;
 using TheShadowWood.Core.UI;
 using TheShadowWood.UI;
 using VContainer;
@@ -21,6 +22,9 @@ namespace TheShadowWood.Bootstrap
             builder.Register<SceneTransition>(Lifetime.Singleton).As<ISceneTransition>();
 
             builder.Register<InputService>(Lifetime.Singleton).As<IInputService>();
+
+            builder.Register<PlayerPrefsSettingsStore>(Lifetime.Singleton).As<ISettingsStore>();
+            builder.Register<GameSettings>(Lifetime.Singleton).As<IGameSettings>();
         }
     }
 }

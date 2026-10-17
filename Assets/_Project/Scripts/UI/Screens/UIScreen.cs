@@ -1,10 +1,12 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace TheShadowWood.UI
 {
-    // Visibility via CanvasGroup; open and close through IUIScreenService, not directly.
+    // Open and close through IUIScreenService, not directly. Can be left active or inactive in the scene.
     [RequireComponent(typeof(CanvasGroup))]
     public class UIScreen : MonoBehaviour, IUIScreen
     {
@@ -16,6 +18,9 @@ namespace TheShadowWood.UI
         private CanvasGroup _canvasGroup;
         private bool _shown;
 
+        public event Action Shown;
+        public event Action Hidden;
+
         public virtual bool CloseOnCancel => closeOnCancel;
         public bool IsShown => _shown;
 
@@ -23,9 +28,15 @@ namespace TheShadowWood.UI
         {
             get
             {
-                if (_canvasGroup == null && !TryGetComponent(out _canvasGroup))
+                if (_canvasGroup == null)
                 {
-                    _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+                    if (!TryGetComponent(out _canvasGroup))
+                    {
+                        _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+                    }
+
+                    // A screen placed under another screen must not inherit its locked state.
+                    _canvasGroup.ignoreParentGroups = true;
                 }
 
                 return _canvasGroup;
@@ -37,22 +48,23 @@ namespace TheShadowWood.UI
             // A presenter may open the screen before Awake runs.
             if (!_shown)
             {
-                ApplyVisible(false);
+                gameObject.SetActive(false);
             }
         }
 
         public void Show()
         {
             _shown = true;
-            ApplyVisible(true);
-            OnShown();
+            gameObject.SetActive(true);
+            Shown?.Invoke();
         }
 
         public void Hide()
         {
             _shown = false;
-            ApplyVisible(false);
-            OnHidden();
+            SetInteractive(false);
+            gameObject.SetActive(false);
+            Hidden?.Invoke();
         }
 
         public void SetInteractive(bool interactive)
@@ -61,29 +73,15 @@ namespace TheShadowWood.UI
             group.interactable = interactive;
             group.blocksRaycasts = interactive;
 
-            if (interactive && firstSelected != null && EventSystem.current != null)
+            EventSystem eventSystem = EventSystem.current;
+            if (!interactive || eventSystem == null)
             {
-                EventSystem.current.SetSelectedGameObject(firstSelected.gameObject);
+                return;
             }
-        }
 
-        protected virtual void OnShown()
-        {
-        }
-
-        protected virtual void OnHidden()
-        {
-        }
-
-        private void ApplyVisible(bool visible)
-        {
-            CanvasGroup group = Group;
-            group.alpha = visible ? 1f : 0f;
-            if (!visible)
-            {
-                group.interactable = false;
-                group.blocksRaycasts = false;
-            }
+            // Preselect only for gamepad; with a mouse a selected button looks like a stuck hover.
+            bool preselect = firstSelected != null && Gamepad.current != null;
+            eventSystem.SetSelectedGameObject(preselect ? firstSelected.gameObject : null);
         }
     }
 }

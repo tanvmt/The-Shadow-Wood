@@ -10,7 +10,9 @@ namespace TheShadowWood.Bootstrap
         {
             builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<MainMenuView>();
+            builder.RegisterComponentInHierarchy<SettingsScreen>();
             builder.RegisterEntryPoint<MainMenuPresenter>();
+            builder.RegisterEntryPoint<SettingsPresenter>();
         }
     }
 }

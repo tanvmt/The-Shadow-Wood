@@ -9,12 +9,14 @@ namespace TheShadowWood.UI
     public sealed class MainMenuPresenter : IStartable, IDisposable
     {
         private readonly MainMenuView _view;
+        private readonly SettingsScreen _settings;
         private readonly ISceneTransition _transition;
         private readonly IUIScreenService _screens;
 
-        public MainMenuPresenter(MainMenuView view, ISceneTransition transition, IUIScreenService screens)
+        public MainMenuPresenter(MainMenuView view, SettingsScreen settings, ISceneTransition transition, IUIScreenService screens)
         {
             _view = view;
+            _settings = settings;
             _transition = transition;
             _screens = screens;
         }
@@ -22,6 +24,7 @@ namespace TheShadowWood.UI
         public void Start()
         {
             _view.StartButton.onClick.AddListener(OnStartClicked);
+            _view.SettingsButton.onClick.AddListener(OnSettingsClicked);
             _view.QuitButton.onClick.AddListener(OnQuitClicked);
 
             _screens.Open(_view);
@@ -35,6 +38,7 @@ namespace TheShadowWood.UI
             }
 
             _view.StartButton.onClick.RemoveListener(OnStartClicked);
+            _view.SettingsButton.onClick.RemoveListener(OnSettingsClicked);
             _view.QuitButton.onClick.RemoveListener(OnQuitClicked);
         }
 
@@ -53,6 +57,11 @@ namespace TheShadowWood.UI
             {
                 _view.SetInteractable(true);
             }
+        }
+
+        private void OnSettingsClicked()
+        {
+            _screens.Open(_settings);
         }
 
         private void OnQuitClicked()

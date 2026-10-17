@@ -1,4 +1,5 @@
 using TheShadowWood.Core.Cameras;
+using TheShadowWood.Core.Pause;
 using TheShadowWood.Interaction;
 using TheShadowWood.Player;
 using TheShadowWood.UI;
@@ -26,6 +27,12 @@ namespace TheShadowWood.Bootstrap
             builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<InteractionPromptView>();
             builder.RegisterComponentInHierarchy<InteractionCrosshairUI>();
+
+            builder.Register<GamePause>(Lifetime.Singleton).As<IGamePause>();
+            builder.RegisterComponentInHierarchy<PauseScreen>();
+            builder.RegisterComponentInHierarchy<SettingsScreen>();
+            builder.RegisterEntryPoint<PausePresenter>();
+            builder.RegisterEntryPoint<SettingsPresenter>();
         }
     }
 }

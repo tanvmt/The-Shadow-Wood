@@ -1,15 +1,18 @@
+using System;
 using TheShadowWood.Core.Input;
+using TheShadowWood.Core.Settings;
 using UnityEngine;
 using VContainer.Unity;
 
 namespace TheShadowWood.Player
 {
-    public sealed class PlayerController : IStartable, ITickable, ILateTickable
+    public sealed class PlayerController : IStartable, ITickable, ILateTickable, IDisposable
     {
         private const float SprintSpeedMargin = 0.1f;
 
         private readonly PlayerView _view;
         private readonly IInputService _input;
+        private readonly IGameSettings _settings;
         private readonly PlayerMovementConfig _config;
         private readonly FirstPersonLook _look;
         private readonly FirstPersonMotor _motor;
@@ -21,10 +24,11 @@ namespace TheShadowWood.Player
         private float _horizontalSpeed;
         private bool _isSprinting;
 
-        public PlayerController(PlayerView view, IInputService input)
+        public PlayerController(PlayerView view, IInputService input, IGameSettings settings)
         {
             _view = view;
             _input = input;
+            _settings = settings;
             _config = view.MovementConfig;
             _look = new FirstPersonLook(view.LookConfig);
             _motor = new FirstPersonMotor(_config);
@@ -46,6 +50,15 @@ namespace TheShadowWood.Player
 
             ApplyControllerHeight();
             ApplyCameraRoot();
+
+            ApplySettings();
+            _settings.Changed += ApplySettings;
+        }
+
+        // Settings live in Root and outlive this scene.
+        public void Dispose()
+        {
+            _settings.Changed -= ApplySettings;
         }
 
         public void Tick()
@@ -92,6 +105,11 @@ namespace TheShadowWood.Player
             _headBob.Tick(_horizontalSpeed, _view.Controller.isGrounded, frequency, deltaTime);
 
             ApplyCameraRoot();
+        }
+
+        private void ApplySettings()
+        {
+            _look.SensitivityScale = _settings.LookSensitivity;
         }
 
         private void ApplyControllerHeight()
