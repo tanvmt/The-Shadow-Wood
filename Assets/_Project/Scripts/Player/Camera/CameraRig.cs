@@ -20,6 +20,8 @@ namespace TheShadowWood.Player
         [SerializeField, Min(0f)] private float defaultFocusBlend = 0.6f;
 
         public CinemachineBrain Brain => brain;
+        // Brain caches its camera in Awake, which can run after the scope builds.
+        public Camera OutputCamera => brain.GetComponent<Camera>();
         public CinemachineCamera FpsCamera => fpsCamera;
         public CinemachineCamera FocusCamera => focusCamera;
         public CinemachineImpulseSource ImpulseSource => impulseSource;

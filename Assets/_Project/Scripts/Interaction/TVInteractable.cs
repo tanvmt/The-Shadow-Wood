@@ -1,18 +1,14 @@
-using System.Collections;
-using DG.Tweening;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using TheShadowWood.Core.Cameras;
+using TheShadowWood.Core.Input;
 using UnityEngine;
 using UnityEngine.Video;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
+using VContainer;
 
 namespace TheShadowWood.Interaction
 {
-    /// <summary>
-    /// Plays a TV video while temporarily taking control of the gameplay camera.
-    /// Assign a transform placed at the desired viewing position and, when using
-    /// Cinemachine, assign its active camera component as Camera Driver To Disable.
-    /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(VideoPlayer))]
     public sealed class TVInteractable : InteractableBehaviour
@@ -45,12 +41,8 @@ namespace TheShadowWood.Interaction
         [Header("Camera")]
         [Tooltip("An empty transform in front of the TV, rotated toward its screen.")]
         [SerializeField] private Transform viewingCameraPose;
-        [Tooltip("For Starter Assets, drag PlayerFollowCamera's CinemachineCamera here.")]
-        [SerializeField] private Behaviour cameraDriverToDisable;
-        [SerializeField, Min(0f)] private float cameraTransitionDuration = 0.35f;
-        [SerializeField] private Ease cameraTransitionEase = Ease.InOutSine;
-        [Tooltip("Components such as FirstPersonController to disable while watching.")]
-        [SerializeField] private Behaviour[] playerControllersToDisable = new Behaviour[0];
+        [Tooltip("Camera blend in seconds. Negative uses the CameraRig default.")]
+        [SerializeField] private float focusBlend = -1f;
 
         [Header("Flow Delays")]
         [Tooltip("Delay after the camera finishes focusing the TV and before the video starts playing.")]
@@ -58,11 +50,9 @@ namespace TheShadowWood.Interaction
         [Tooltip("Delay after the video finishes and before the camera leaves the TV focus.")]
         [SerializeField, Min(0f)] private float videoEndToUnfocusDelay = 0f;
 
-        [Header("Cancel")]
-        [Tooltip("Escape always exits on keyboard. A UI Button may call CancelWatching.")]
-        [SerializeField] private bool allowGamepadCancel = true;
+        private ICameraFocusService _cameraFocus;
+        private IInputService _input;
 
-        private Camera _camera;
         private Material _screenMaterial;
         private Texture _originalScreenTexture;
         private Texture _originalEmissionTexture;
@@ -73,12 +63,17 @@ namespace TheShadowWood.Interaction
         private Color _originalEmissionColor;
         private bool _emissionWasEnabled;
         private bool _ownsVideoRenderTexture;
-        private Vector3 _cameraPositionBeforeWatching;
-        private Quaternion _cameraRotationBeforeWatching;
-        private bool _cameraDriverWasEnabled;
-        private bool[] _controllersWereEnabled;
+        private CancellationTokenSource _watchCts;
         private bool _isWatching;
-        private Coroutine _transition;
+        private bool _videoFinished;
+        private bool _cancelRequested;
+
+        [Inject]
+        public void Construct(ICameraFocusService cameraFocus, IInputService input)
+        {
+            _cameraFocus = cameraFocus;
+            _input = input;
+        }
 
         protected override void Awake()
         {
@@ -109,166 +104,16 @@ namespace TheShadowWood.Interaction
                 videoPlayer.loopPointReached -= HandleVideoFinished;
             }
 
-            StopWatchingImmediately();
+            _watchCts?.Cancel();
             base.OnDisable();
-        }
-
-        private void Update()
-        {
-            if (_isWatching && WasCancelPressed())
-            {
-                CancelWatching();
-            }
-        }
-
-        /// <summary>Connect this method to an on-screen Cancel button if the game has one.</summary>
-        public void CancelWatching()
-        {
-            StopWatching();
-        }
-
-        public override bool CanInteract(InteractionContext context)
-        {
-            return !_isWatching
-                   && videoPlayer != null
-                   && viewingCameraPose != null
-                   && base.CanInteract(context);
-        }
-
-        protected override InteractionResult PerformInteraction(InteractionContext context)
-        {
-            if (context.Camera == null)
-            {
-                return InteractionResult.Rejected("No interaction camera is available.");
-            }
-
-            _camera = context.Camera;
-            _cameraPositionBeforeWatching = _camera.transform.position;
-            _cameraRotationBeforeWatching = _camera.transform.rotation;
-            _isWatching = true;
-            SetFocused(false, context);
-            SetPlayerControlEnabled(false);
-
-            if (_transition != null)
-            {
-                StopCoroutine(_transition);
-            }
-
-            _transition = StartCoroutine(MoveCameraThenPlay());
-            return InteractionResult.Success();
-        }
-
-        private IEnumerator MoveCameraThenPlay()
-        {
-            SetCameraDriverEnabled(false);
-            Tween moveTween = MoveCamera(viewingCameraPose.position, viewingCameraPose.rotation);
-            if (moveTween != null)
-            {
-                yield return moveTween.WaitForCompletion();
-            }
-
-            if (focusToPlayDelay > 0f)
-            {
-                yield return new WaitForSecondsRealtime(focusToPlayDelay);
-            }
-
-            TurnScreenOn();
-            if (!videoPlayer.isPrepared)
-            {
-                videoPlayer.Prepare();
-                while (!videoPlayer.isPrepared)
-                {
-                    yield return null;
-                }
-            }
-
-            videoPlayer.Play();
-            _transition = null;
-        }
-
-        private void HandleVideoFinished(VideoPlayer source)
-        {
-            StartCoroutine(DelayedStopWatching());
-        }
-
-        private IEnumerator DelayedStopWatching()
-        {
-            if (videoEndToUnfocusDelay > 0f)
-            {
-                yield return new WaitForSecondsRealtime(videoEndToUnfocusDelay);
-            }
-
-            StopWatching();
-        }
-
-        private void StopWatching()
-        {
-            if (!_isWatching)
-            {
-                return;
-            }
-
-            _isWatching = false;
-            videoPlayer.Stop();
-            TurnScreenOff();
-
-            if (_transition != null)
-            {
-                StopCoroutine(_transition);
-            }
-
-            _transition = StartCoroutine(ReturnCameraAndPlayerControl());
-        }
-
-        private IEnumerator ReturnCameraAndPlayerControl()
-        {
-            if (_camera != null)
-            {
-                Tween moveTween = MoveCamera(_cameraPositionBeforeWatching, _cameraRotationBeforeWatching);
-                if (moveTween != null)
-                {
-                    yield return moveTween.WaitForCompletion();
-                }
-            }
-
-            SetCameraDriverEnabled(_cameraDriverWasEnabled);
-            SetPlayerControlEnabled(true);
-            _transition = null;
-        }
-
-        private void StopWatchingImmediately()
-        {
-            if (!_isWatching && _transition == null)
-            {
-                return;
-            }
-
-            _isWatching = false;
-            if (_transition != null)
-            {
-                StopCoroutine(_transition);
-                _transition = null;
-            }
-
-            if (videoPlayer != null)
-            {
-                videoPlayer.Stop();
-            }
-
-            TurnScreenOff();
-
-            if (_camera != null)
-            {
-                _camera.transform.DOKill();
-                _camera.transform.SetPositionAndRotation(_cameraPositionBeforeWatching, _cameraRotationBeforeWatching);
-            }
-
-            SetCameraDriverEnabled(_cameraDriverWasEnabled);
-            SetPlayerControlEnabled(true);
         }
 
         private void OnDestroy()
         {
+            _watchCts?.Cancel();
+            _watchCts?.Dispose();
+            _watchCts = null;
+
             if (_ownsVideoRenderTexture && videoRenderTexture != null)
             {
                 videoRenderTexture.Release();
@@ -276,26 +121,100 @@ namespace TheShadowWood.Interaction
             }
         }
 
-        /// <summary>Starts (and returns) a tween moving the camera to the given pose, or null if it snapped instantly.</summary>
-        private Tween MoveCamera(Vector3 toPosition, Quaternion toRotation)
+        // Hook for an on-screen Cancel button.
+        public void CancelWatching()
         {
-            if (_camera == null)
+            _cancelRequested = true;
+        }
+
+        public override bool CanInteract(InteractionContext context)
+        {
+            return !_isWatching
+                   && _cameraFocus != null
+                   && videoPlayer != null
+                   && viewingCameraPose != null
+                   && base.CanInteract(context);
+        }
+
+        protected override InteractionResult PerformInteraction(InteractionContext context)
+        {
+            _watchCts?.Dispose();
+            _watchCts = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            WatchAsync(_watchCts.Token).Forget();
+            return InteractionResult.Success();
+        }
+
+        private async UniTaskVoid WatchAsync(CancellationToken ct)
+        {
+            _isWatching = true;
+            _videoFinished = false;
+            _cancelRequested = false;
+
+            try
             {
-                return null;
+                await _cameraFocus.FocusAsync(viewingCameraPose, focusBlend, ct);
+
+                if (focusToPlayDelay > 0f)
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(focusToPlayDelay), ignoreTimeScale: true, cancellationToken: ct);
+                }
+
+                TurnScreenOn();
+                if (!videoPlayer.isPrepared)
+                {
+                    videoPlayer.Prepare();
+                    await UniTask.WaitUntil(() => videoPlayer.isPrepared || IsCancelRequested(), cancellationToken: ct);
+                }
+
+                if (!_cancelRequested)
+                {
+                    videoPlayer.Play();
+                    await UniTask.WaitUntil(() => _videoFinished || IsCancelRequested(), cancellationToken: ct);
+                }
+
+                if (!_cancelRequested && videoEndToUnfocusDelay > 0f)
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(videoEndToUnfocusDelay), ignoreTimeScale: true, cancellationToken: ct);
+                }
+
+                StopVideo();
+                await _cameraFocus.ReleaseAsync(focusBlend, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                StopVideo();
+                // Cut back so the Focus context never outlives the TV.
+                _cameraFocus.ReleaseAsync(0f).Forget();
+            }
+            finally
+            {
+                _isWatching = false;
+            }
+        }
+
+        private bool IsCancelRequested()
+        {
+            if (_input.CancelPressed)
+            {
+                _cancelRequested = true;
             }
 
-            _camera.transform.DOKill();
+            return _cancelRequested;
+        }
 
-            if (cameraTransitionDuration <= 0f)
+        private void HandleVideoFinished(VideoPlayer source)
+        {
+            _videoFinished = true;
+        }
+
+        private void StopVideo()
+        {
+            if (videoPlayer != null)
             {
-                _camera.transform.SetPositionAndRotation(toPosition, toRotation);
-                return null;
+                videoPlayer.Stop();
             }
 
-            Sequence sequence = DOTween.Sequence().SetUpdate(true);
-            sequence.Join(_camera.transform.DOMove(toPosition, cameraTransitionDuration).SetEase(cameraTransitionEase));
-            sequence.Join(_camera.transform.DORotateQuaternion(toRotation, cameraTransitionDuration).SetEase(cameraTransitionEase));
-            return sequence;
+            TurnScreenOff();
         }
 
         private void ConfigureVideoOutput()
@@ -451,79 +370,6 @@ namespace TheShadowWood.Interaction
             videoRenderTexture.Create();
             _ownsVideoRenderTexture = true;
             return videoRenderTexture;
-        }
-
-        private void SetCameraDriverEnabled(bool enabled)
-        {
-            if (cameraDriverToDisable == null)
-            {
-                return;
-            }
-
-            if (!enabled)
-            {
-                _cameraDriverWasEnabled = cameraDriverToDisable.enabled;
-            }
-
-            cameraDriverToDisable.enabled = enabled;
-        }
-
-        private void SetPlayerControlEnabled(bool enabled)
-        {
-            if (!enabled)
-            {
-                _controllersWereEnabled = new bool[playerControllersToDisable.Length];
-                for (int i = 0; i < playerControllersToDisable.Length; i++)
-                {
-                    Behaviour controller = playerControllersToDisable[i];
-                    if (controller == null)
-                    {
-                        continue;
-                    }
-
-                    _controllersWereEnabled[i] = controller.enabled;
-                    controller.enabled = false;
-                }
-
-                return;
-            }
-
-            if (_controllersWereEnabled == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < playerControllersToDisable.Length; i++)
-            {
-                Behaviour controller = playerControllersToDisable[i];
-                if (controller != null)
-                {
-                    controller.enabled = _controllersWereEnabled[i];
-                }
-            }
-
-            _controllersWereEnabled = null;
-        }
-
-        private bool WasCancelPressed()
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
-            {
-                return true;
-            }
-
-            return allowGamepadCancel
-                   && Gamepad.current != null
-                   && Gamepad.current.buttonEast.wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(KeyCode.Escape);
-#endif
-        }
-
-        private void OnValidate()
-        {
-            cameraTransitionDuration = Mathf.Max(0f, cameraTransitionDuration);
         }
     }
 }

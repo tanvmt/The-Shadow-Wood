@@ -6,9 +6,16 @@ namespace TheShadowWood.Core.Input
 {
     public sealed class InputService : IInputService, IDisposable
     {
+        private const string KeyboardMouseGroup = "Keyboard&Mouse";
+        private const string GamepadGroup = "Gamepad";
+        private const InputBinding.DisplayStringOptions BindingLabelOptions = InputBinding.DisplayStringOptions.DontIncludeInteractions;
+
         private readonly GameInputActions _actions;
         private readonly InputContextStack _stack;
         private bool _lookIsPointerDelta = true;
+        private bool _usingGamepad;
+        private string _keyboardInteractLabel;
+        private string _gamepadInteractLabel;
 
         public InputService()
         {
@@ -33,7 +40,9 @@ namespace TheShadowWood.Core.Input
                 InputAction look = _actions.Player.Look;
                 if (look.activeControl != null)
                 {
-                    _lookIsPointerDelta = look.activeControl.device is Pointer;
+                    InputDevice device = look.activeControl.device;
+                    _lookIsPointerDelta = device is Pointer;
+                    _usingGamepad = device is Gamepad;
                 }
 
                 return look.ReadValue<Vector2>();
@@ -45,6 +54,10 @@ namespace TheShadowWood.Core.Input
         public bool CrouchPressed => _actions.Player.Crouch.WasPressedThisFrame();
         public bool InteractPressed => _actions.Player.Interact.WasPressedThisFrame();
         public bool CancelPressed => _actions.Player.Cancel.WasPressedThisFrame();
+
+        public string InteractBindingLabel => _usingGamepad
+            ? _gamepadInteractLabel ??= _actions.Player.Interact.GetBindingDisplayString(BindingLabelOptions, GamepadGroup)
+            : _keyboardInteractLabel ??= _actions.Player.Interact.GetBindingDisplayString(BindingLabelOptions, KeyboardMouseGroup);
 
         public IDisposable PushContext(InputContext context)
         {

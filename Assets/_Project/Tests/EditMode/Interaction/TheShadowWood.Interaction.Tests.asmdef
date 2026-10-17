@@ -2,9 +2,11 @@
     "name": "TheShadowWood.Interaction.Tests",
     "rootNamespace": "TheShadowWood.Interaction.Tests",
     "references": [
-        "GUID:b63ca7f529d655f498e445609f9c66e3",
-        "GUID:27619889b8ba8c24980f49ee34dbb44a",
-        "GUID:0acc523941302664db1f4e527237feb3"
+        "TheShadowWood.Interaction",
+        "TheShadowWood.Core",
+        "VContainer",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
     ],
     "includePlatforms": [
         "Editor"
@@ -17,7 +19,6 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_INCLUDE_TESTS",
         "UNITY_INCLUDE_TESTS"
     ],
     "versionDefines": [],

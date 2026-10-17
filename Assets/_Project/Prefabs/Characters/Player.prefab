@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6913787035496163334}
   - component: {fileID: 3962832118587527547}
   - component: {fileID: 2658040494002419196}
+  - component: {fileID: 2979040647851545080}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -76,6 +77,19 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &2979040647851545080
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5229600499354758812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48006f2255f9297419cb0e2c0884614b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TheShadowWood.Interaction::TheShadowWood.Interaction.PlayerInteractorView
+  config: {fileID: 11400000, guid: db7190d236c7c934c9d78bc6f1bfcbb6, type: 2}
 --- !u!1 &5445774709900655337
 GameObject:
   m_ObjectHideFlags: 0

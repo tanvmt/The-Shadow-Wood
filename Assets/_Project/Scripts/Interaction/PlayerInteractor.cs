@@ -1,33 +1,34 @@
 using System;
+using TheShadowWood.Core.Input;
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
+using VContainer.Unity;
 
 namespace TheShadowWood.Interaction
 {
-    /// <summary>
-    /// Performs an occlusion-aware raycast from the centre of the gameplay camera and
-    /// owns the focused interactable. It has no dependency on UI, inventory, or outline packages.
-    /// </summary>
-    [DisallowMultipleComponent]
-    public sealed class PlayerInteractor : MonoBehaviour
+    public sealed class PlayerInteractor : IPlayerInteractor, ITickable, IDisposable
     {
-        [Header("Raycast")]
-        [SerializeField] private Camera interactionCamera;
-        [SerializeField, Min(0.1f)] private float interactionDistance = 3f;
-        [Tooltip("Include both interactables and geometry that should block interaction.")]
-        [SerializeField] private LayerMask visibilityLayers = Physics.DefaultRaycastLayers;
-        [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
-        [SerializeField, Range(4, 64)] private int hitBufferSize = 16;
+        private static readonly Vector3 ViewportCentre = new Vector3(0.5f, 0.5f, 0f);
 
-        [Header("Debug")]
-        [SerializeField] private bool drawDebugRay;
+        private readonly PlayerInteractorView _view;
+        private readonly InteractionConfig _config;
+        private readonly Camera _camera;
+        private readonly IInputService _input;
+        private readonly RaycastHit[] _hitBuffer;
 
-        private RaycastHit[] _hitBuffer;
         private InteractableBehaviour _focusedTarget;
         private InteractionContext _focusedContext;
         private bool _focusedTargetAvailable;
+
+        public PlayerInteractor(PlayerInteractorView view, Camera camera, IInputService input)
+        {
+            _view = view;
+            _config = view.Config;
+            _camera = camera;
+            _input = input;
+            _hitBuffer = new RaycastHit[Mathf.Clamp(_config.HitBufferSize, 4, 64)];
+
+            _input.ContextChanged += HandleContextChanged;
+        }
 
         public event Action<InteractionFocusState> FocusChanged;
         public event Action<InteractionResult> InteractionCompleted;
@@ -35,93 +36,79 @@ namespace TheShadowWood.Interaction
         public InteractionFocusState CurrentFocus =>
             new InteractionFocusState(_focusedTarget, _focusedTargetAvailable);
 
-        public Camera InteractionCamera => interactionCamera;
-        public float InteractionDistance => interactionDistance;
-
-        private void Awake()
+        public void Tick()
         {
-            EnsureHitBuffer();
-            ResolveCamera();
-        }
+            if (_input.Context != InputContext.Gameplay)
+            {
+                return;
+            }
 
-        private void OnEnable()
-        {
-            ResolveCamera();
-        }
-
-        private void Update()
-        {
             RefreshFocus();
-        }
 
-#if ENABLE_INPUT_SYSTEM
-        public void OnInteract(InputValue value)
-        {
-            if (value.isPressed)
+            if (_input.InteractPressed)
             {
                 TryInteract();
             }
         }
-#endif
 
-        public InteractionResult TryInteract()
+        public void Dispose()
         {
-            RefreshFocus();
-
-            if (_focusedTarget == null)
-            {
-                return InteractionResult.Rejected("There is nothing to interact with.");
-            }
-
-            if (!_focusedTargetAvailable)
-            {
-                InteractionResult unavailable = InteractionResult.Rejected("Interaction is currently unavailable.");
-                InteractionCompleted?.Invoke(unavailable);
-                return unavailable;
-            }
-
-            InteractionResult result = _focusedTarget.Interact(_focusedContext);
-            InteractionCompleted?.Invoke(result);
-            RefreshFocus();
-            return result;
+            _input.ContextChanged -= HandleContextChanged;
+            ClearFocus();
         }
 
-        public void RefreshFocus()
+        private void HandleContextChanged(InputContext context)
         {
-            EnsureHitBuffer();
-
-            if (interactionCamera == null)
+            if (context != InputContext.Gameplay)
             {
-                ResolveCamera();
-                if (interactionCamera == null)
-                {
-                    ClearFocus();
-                    return;
-                }
+                ClearFocus();
+            }
+        }
+
+        private void TryInteract()
+        {
+            if (_focusedTarget == null)
+            {
+                return;
             }
 
-            Ray ray = interactionCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            bool hasHit = TryGetNearestVisibleHit(ray, out RaycastHit nearestHit);
+            InteractionResult result = _focusedTargetAvailable
+                ? _focusedTarget.Interact(_focusedContext)
+                : InteractionResult.Rejected("Interaction is currently unavailable.");
+
+            InteractionCompleted?.Invoke(result);
+            RefreshFocus();
+        }
+
+        private void RefreshFocus()
+        {
+            if (_camera == null)
+            {
+                ClearFocus();
+                return;
+            }
+
+            Ray ray = _camera.ViewportPointToRay(ViewportCentre);
 
             InteractableBehaviour nextTarget = null;
             InteractionContext nextContext = default;
             bool nextTargetAvailable = false;
 
-            if (hasHit)
+            if (TryGetNearestVisibleHit(ray, out RaycastHit hit))
             {
-                nextTarget = nearestHit.collider.GetComponentInParent<InteractableBehaviour>();
-                nextContext = new InteractionContext(gameObject, interactionCamera, nearestHit);
+                nextTarget = hit.collider.GetComponentInParent<InteractableBehaviour>();
+                nextContext = new InteractionContext(_view.gameObject, _camera, hit);
                 nextTargetAvailable = nextTarget != null && nextTarget.CanInteract(nextContext);
             }
 
             SetFocus(nextTarget, nextContext, nextTargetAvailable);
 
-            if (drawDebugRay)
+            if (_config.DrawDebugRay)
             {
-                Color color = nextTarget == null
-                    ? Color.red
-                    : nextTargetAvailable ? Color.green : Color.yellow;
-                Debug.DrawRay(ray.origin, ray.direction * interactionDistance, color);
+                Color color = nextTarget == null ? Color.red
+                    : nextTargetAvailable ? Color.green
+                    : Color.yellow;
+                Debug.DrawRay(ray.origin, ray.direction * _config.Distance, color);
             }
         }
 
@@ -133,36 +120,32 @@ namespace TheShadowWood.Interaction
             int hitCount = Physics.RaycastNonAlloc(
                 ray,
                 _hitBuffer,
-                interactionDistance,
-                visibilityLayers,
-                triggerInteraction);
+                _config.Distance,
+                _config.VisibilityLayers,
+                _config.TriggerInteraction);
 
             for (int i = 0; i < hitCount; i++)
             {
-                Collider hitCollider = _hitBuffer[i].collider;
-                if (hitCollider == null || hitCollider.transform.IsChildOf(transform))
+                RaycastHit hit = _hitBuffer[i];
+                if (hit.collider == null || hit.collider.transform.IsChildOf(_view.Root))
                 {
                     continue;
                 }
 
-                if (_hitBuffer[i].distance >= nearestDistance)
+                if (hit.distance < nearestDistance)
                 {
-                    continue;
+                    nearestDistance = hit.distance;
+                    nearestHit = hit;
                 }
-
-                nearestDistance = _hitBuffer[i].distance;
-                nearestHit = _hitBuffer[i];
             }
 
             return nearestDistance < float.PositiveInfinity;
         }
 
-        private void SetFocus(
-            InteractableBehaviour nextTarget,
-            InteractionContext nextContext,
-            bool nextTargetAvailable)
+        private void SetFocus(InteractableBehaviour nextTarget, InteractionContext nextContext, bool nextTargetAvailable)
         {
-            if (_focusedTarget == nextTarget)
+            // ReferenceEquals so a destroyed target still counts as a change.
+            if (ReferenceEquals(_focusedTarget, nextTarget))
             {
                 _focusedContext = nextContext;
 
@@ -195,34 +178,6 @@ namespace TheShadowWood.Interaction
         private void ClearFocus()
         {
             SetFocus(null, default, false);
-        }
-
-        private void ResolveCamera()
-        {
-            if (interactionCamera == null)
-            {
-                interactionCamera = Camera.main;
-            }
-        }
-
-        private void EnsureHitBuffer()
-        {
-            int requiredSize = Mathf.Clamp(hitBufferSize, 4, 64);
-            if (_hitBuffer == null || _hitBuffer.Length != requiredSize)
-            {
-                _hitBuffer = new RaycastHit[requiredSize];
-            }
-        }
-
-        private void OnDisable()
-        {
-            ClearFocus();
-        }
-
-        private void OnValidate()
-        {
-            interactionDistance = Mathf.Max(0.1f, interactionDistance);
-            hitBufferSize = Mathf.Clamp(hitBufferSize, 4, 64);
         }
     }
 }
