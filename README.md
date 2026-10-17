@@ -54,7 +54,8 @@ Input dùng action map `Player` tại `Assets/_Project/Scripts/Core/Input/InputS
 | Chạy | Giữ `Left Shift` | Nhấn Left Stick |
 | Cúi (bật/tắt) | `C` | East button |
 | Tương tác | `E` | North button |
-| Huỷ / thoát | `Esc` | Chưa có binding |
+| Huỷ / thoát (TV, đóng màn hình) | `Esc` | East button, Start |
+| Pause | `Esc` | Start |
 
 > Khi thay đổi input action, lưu asset để sinh lại `GameInputActions.cs` và cập nhật bảng quy tắc context. Chi tiết: [Docs/PlayerSystem.md](Docs/PlayerSystem.md#input).
 
@@ -77,7 +78,7 @@ Assets/
 │   │   ├── Interaction/               # Raycast, focus và interactable
 │   │   ├── Inventory/                 # Pickup contract
 │   │   ├── Player/                    # FPS controller, look, camera rig, focus/rung camera
-│   │   ├── UI/                        # Main menu, crosshair
+│   │   ├── UI/                        # Screen service, menu, pause, settings, fade, subtitle, crosshair
 │   │   └── Audio/, Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
 │   ├── Settings/                      # VContainerSettings, Input System settings
 │   ├── Tests/EditMode/                # EditMode test
@@ -90,6 +91,7 @@ Docs/
 ├── SceneFlow.md                       # Luồng scene, ISceneLoader, Scene Switcher
 ├── PlayerSystem.md                    # Input context, camera, FPS controller
 ├── InteractionSystem.md               # Tài liệu interaction
+├── UISystem.md                        # Màn hình, pause, settings, fade, subtitle
 └── DevelopmentPlan.md                 # Kế hoạch phát triển theo branch
 ```
 
@@ -122,6 +124,12 @@ Luồng tương tác: camera raycast từ giữa màn hình → `PlayerInteracto
 | `InteractionCrosshairUI` | Crosshair phản hồi target đang focus. |
 
 Hướng dẫn cấu hình chi tiết, outline và test case: [Docs/InteractionSystem.md](Docs/InteractionSystem.md).
+
+### UI
+
+UI tối giản, không dùng package UI manager. Mọi màn hình (menu, pause, settings, sau này note, inventory, keypad) kế thừa `UIScreen` và mở/đóng qua `IUIScreenService`: service tự khoá player, hiện con trỏ, xử lý Esc và chồng màn hình. Pause dừng hẳn game; settings gồm âm lượng và độ nhạy chuột, lưu PlayerPrefs. Chuyển scene có fade đen qua `ISceneTransition`; subtitle qua `ISubtitleService`.
+
+Prefab dựng sẵn trong `Assets/_Project/Prefabs/UI/`: `PauseScreen`, `SettingsScreen`, `SubtitleView`. Chi tiết, cách thêm màn hình mới và setup scene: [Docs/UISystem.md](Docs/UISystem.md).
 
 ### Assembly definition
 
@@ -213,4 +221,4 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 
 ---
 
-Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md) · [UI System](Docs/UISystem.md)

@@ -32,19 +32,22 @@ Bấm Play thẳng ở `Menu` hoặc `Gameplay` vẫn chạy được, vì Root 
 | `Core/Scenes/SceneLoader.cs` | Core | Chặn load trùng, kiểm tra Build Settings, reset trạng thái khi lỗi/cancel |
 | `Core/Scenes/ISceneBackend.cs` | Core | Lớp bọc quanh Unity `SceneManager`, để thay bằng bản giả khi test |
 | `Core/Scenes/UnitySceneBackend.cs` | Core | Implementation thật: `Application.CanStreamedLevelBeLoaded` + `SceneManager.LoadSceneAsync` |
-| `Bootstrap/BootstrapFlow.cs` | Bootstrap | `IAsyncStartable` của scene Bootstrap, load `Menu` |
+| `Core/Scenes/ISceneTransition.cs`, `SceneTransition.cs` | Core | Fade đen → `ISceneLoader.LoadAsync` → fade sáng. Xem [UISystem.md](UISystem.md#fade-và-chuyển-scene) |
+| `Bootstrap/BootstrapFlow.cs` | Bootstrap | `IAsyncStartable` của scene Bootstrap: đặt màn đen rồi chuyển sang `Menu` |
 | `Bootstrap/BootstrapLifetimeScope.cs` | Bootstrap | Đăng ký `BootstrapFlow` |
-| `Bootstrap/MenuLifetimeScope.cs` | Bootstrap | Đăng ký `MainMenuView` + `MainMenuPresenter` |
+| `Bootstrap/MenuLifetimeScope.cs` | Bootstrap | Đăng ký `UIScreenService`, main menu, settings |
 | `Bootstrap/GameplayLifetimeScope.cs` | Bootstrap | Scope của scene Gameplay |
-| `UI/Menu/MainMenuView.cs` | UI | MonoBehaviour chỉ giữ reference hai nút |
-| `UI/Menu/MainMenuPresenter.cs` | UI | Xử lý nút Bắt đầu/Thoát |
+| `UI/Menu/MainMenuView.cs` | UI | `UIScreen` chỉ giữ reference ba nút Start/Settings/Quit |
+| `UI/Menu/MainMenuPresenter.cs` | UI | Xử lý nút Start/Settings/Quit |
 | `Editor/SceneSwitcherToolbar.cs` | Editor | Dropdown chuyển scene trên main toolbar |
 
-`UnitySceneBackend` và `SceneLoader` được đăng ký Singleton ở `RootLifetimeScope`.
+`UnitySceneBackend`, `SceneLoader` và `SceneTransition` được đăng ký Singleton ở `RootLifetimeScope`.
 
 ## Load scene từ code
 
-Inject `ISceneLoader` rồi gọi `LoadAsync`:
+Chuyển scene mà người chơi nhìn thấy (menu → game, game → menu, ending) dùng `ISceneTransition.LoadAsync`: cùng kết quả `bool` như dưới đây, nhưng có fade đen trước và fade sáng sau. Chi tiết: [UISystem.md](UISystem.md#fade-và-chuyển-scene).
+
+`ISceneLoader` là tầng dưới, không có hiệu ứng. Inject rồi gọi `LoadAsync`:
 
 ```csharp
 public sealed class SomePresenter
@@ -84,7 +87,7 @@ Lưu ý khi dùng:
 - **Khoá UI trong lúc load**, như `MainMenuPresenter` làm với `SetInteractable(false)`. Nếu `LoadAsync` trả `false` thì mở khoá lại.
 - **Sau khi load Single thành công, object của scene cũ đã bị huỷ.** Code chạy tiếp sau `await` không được đụng vào view của scene cũ khi kết quả là `true`.
 - `progress` nhận giá trị 0..1 từ `AsyncOperation`, dùng được cho loading bar sau này.
-- Không gọi `SceneManager.LoadScene` trực tiếp trong code gameplay. Mọi lượt chuyển scene đi qua `ISceneLoader` để có chặn load trùng và kiểm tra Build Settings ở một chỗ.
+- Không gọi `SceneManager.LoadScene` trực tiếp trong code gameplay. Mọi lượt chuyển scene đi qua `ISceneTransition` (hoặc `ISceneLoader` khi không cần fade) để có chặn load trùng và kiểm tra Build Settings ở một chỗ.
 
 ## Thêm scene mới
 
@@ -126,8 +129,8 @@ Muốn tìm scene ở thư mục khác, sửa mảng `SearchFolders` trong `Scen
 
 | Test | Kết quả mong đợi |
 |---|---|
-| Play từ `Bootstrap` | Chuyển sang `Menu` ngay. Có đúng một `RootLifetimeScope` dưới `DontDestroyOnLoad` |
-| Bấm Bắt đầu | Hai nút bị khoá, chuyển sang `Gameplay` |
+| Play từ `Bootstrap` | Màn đen rồi `Menu` sáng dần. Có đúng một `RootLifetimeScope` và một `ScreenFader` dưới `DontDestroyOnLoad` |
+| Bấm Bắt đầu | Các nút bị khoá, tối dần, chuyển sang `Gameplay` rồi sáng dần |
 | Bấm Bắt đầu liên tục nhiều lần | Chỉ load một lần, không có warning load trùng từ menu |
 | Bấm Thoát | Thoát Play Mode |
 | Play thẳng từ `Menu` hoặc `Gameplay` | Scene chạy được, Root vẫn được tạo |
@@ -139,7 +142,7 @@ Muốn tìm scene ở thư mục khác, sửa mảng `SearchFolders` trong `Scen
 |---|---|
 | Play ở `Bootstrap` nhưng không sang `Menu` | `BootstrapLifetimeScope.Configure` thiếu `RegisterEntryPoint<BootstrapFlow>()`, hoặc GameObject trong scene chưa gắn component `Bootstrap Lifetime Scope`. |
 | `[SceneLoader] Scene '...' is not enabled in Build Settings` | Scene chưa có hoặc bị bỏ tick trong Scene List, hoặc tên trong `SceneCatalog` không khớp tên file. |
-| Nút menu không phản hồi | `MenuLifetimeScope` chưa đăng ký `MainMenuPresenter`, `MainMenuView` chưa gán hai nút, hoặc scene thiếu `EventSystem` (dùng `InputSystemUIInputModule`). |
-| `VContainerException` về `MainMenuView` | Scene `Menu` không có GameObject nào gắn `MainMenuView`. |
+| Nút menu không phản hồi | `MenuLifetimeScope` chưa đăng ký `MainMenuPresenter`, `MainMenuView` chưa gán đủ ba nút, hoặc scene thiếu `EventSystem` (dùng `InputSystemUIInputModule`). |
+| `VContainerException` về `MainMenuView` hoặc `SettingsScreen` | Scene `Menu` thiếu GameObject gắn `MainMenuView`, hoặc thiếu `SettingsScreen.prefab`. |
 | Bản build mở thẳng vào Menu hoặc Gameplay | `Bootstrap` không nằm ở index 0 trong Build Settings. |
 | `ArgumentOutOfRangeException` từ `SceneCatalog` | Đã thêm giá trị `SceneId` nhưng chưa thêm `case` tương ứng. |
