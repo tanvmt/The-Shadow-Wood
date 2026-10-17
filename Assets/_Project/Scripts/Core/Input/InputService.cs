@@ -54,6 +54,7 @@ namespace TheShadowWood.Core.Input
         public bool CrouchPressed => _actions.Player.Crouch.WasPressedThisFrame();
         public bool InteractPressed => _actions.Player.Interact.WasPressedThisFrame();
         public bool CancelPressed => _actions.Player.Cancel.WasPressedThisFrame();
+        public bool PausePressed => _actions.Player.Pause.WasPressedThisFrame();
 
         public string InteractBindingLabel => _usingGamepad
             ? _gamepadInteractLabel ??= _actions.Player.Interact.GetBindingDisplayString(BindingLabelOptions, GamepadGroup)
@@ -98,6 +99,7 @@ namespace TheShadowWood.Core.Input
             SetEnabled(player.Crouch, rule.Crouch);
             SetEnabled(player.Interact, rule.Interact);
             SetEnabled(player.Cancel, rule.Cancel);
+            SetEnabled(player.Pause, rule.Pause);
 
             ApplyCursor(rule.CursorLocked);
         }

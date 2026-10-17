@@ -1,6 +1,5 @@
 using System;
 using Cysharp.Threading.Tasks;
-using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Scenes;
 using UnityEngine;
 using VContainer.Unity;
@@ -11,30 +10,25 @@ namespace TheShadowWood.UI
     {
         private readonly MainMenuView _view;
         private readonly ISceneLoader _sceneLoader;
-        private readonly IInputService _input;
-        private IDisposable _uiContext;
+        private readonly IUIScreenService _screens;
 
-        public MainMenuPresenter(MainMenuView view, ISceneLoader sceneLoader, IInputService input)
+        public MainMenuPresenter(MainMenuView view, ISceneLoader sceneLoader, IUIScreenService screens)
         {
             _view = view;
             _sceneLoader = sceneLoader;
-            _input = input;
+            _screens = screens;
         }
 
         public void Start()
         {
-            // Free the cursor and block gameplay actions while the menu is open.
-            _uiContext = _input.PushContext(InputContext.UI);
-
             _view.StartButton.onClick.AddListener(OnStartClicked);
             _view.QuitButton.onClick.AddListener(OnQuitClicked);
+
+            _screens.Open(_view);
         }
 
         public void Dispose()
         {
-            _uiContext?.Dispose();
-            _uiContext = null;
-
             if (_view == null)
             {
                 return;

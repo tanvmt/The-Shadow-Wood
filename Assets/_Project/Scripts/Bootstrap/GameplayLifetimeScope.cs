@@ -23,6 +23,7 @@ namespace TheShadowWood.Bootstrap
             builder.RegisterEntryPoint<PlayerController>();
             builder.RegisterEntryPoint<PlayerInteractor>();
 
+            builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<InteractionPromptView>();
             builder.RegisterComponentInHierarchy<InteractionCrosshairUI>();
         }

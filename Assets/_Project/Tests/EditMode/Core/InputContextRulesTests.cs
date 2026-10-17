@@ -22,6 +22,7 @@ namespace TheShadowWood.Core.Tests
 
             Assert.That(rule.Move && rule.Look && rule.Sprint && rule.Crouch && rule.Interact, Is.True);
             Assert.That(rule.Cancel, Is.False);
+            Assert.That(rule.Pause, Is.True);
             Assert.That(rule.CursorLocked, Is.True);
         }
 
@@ -34,6 +35,17 @@ namespace TheShadowWood.Core.Tests
 
             Assert.That(rule.Move || rule.Look || rule.Sprint || rule.Crouch, Is.False);
             Assert.That(rule.Cancel, Is.True);
+        }
+
+        // Pause and Cancel share Esc; only one of them may be live per context.
+        [Test]
+        public void EveryContext_EnablesExactlyOneOfPauseAndCancel()
+        {
+            foreach (InputContext context in Enum.GetValues(typeof(InputContext)))
+            {
+                InputContextRule rule = InputContextRules.Get(context);
+                Assert.That(rule.Pause, Is.Not.EqualTo(rule.Cancel), $"{context} enables both or neither.");
+            }
         }
 
         [TestCase(InputContext.Puzzle)]
