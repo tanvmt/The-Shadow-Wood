@@ -1,18 +1,14 @@
+using TheShadowWood.Core.Input;
 using TheShadowWood.Interaction;
 using UnityEngine;
 using UnityEngine.UI;
+using VContainer;
 
 namespace TheShadowWood.UI
 {
-    /// <summary>
-    /// Presentation-only view for the centre dot. It reacts to PlayerInteractor events
-    /// and never performs physics queries itself.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class InteractionCrosshairUI : MonoBehaviour
     {
-        [Header("Dependencies")]
-        [SerializeField] private PlayerInteractor interactor;
         [SerializeField] private Graphic crosshairGraphic;
 
         [Header("Colors")]
@@ -27,11 +23,28 @@ namespace TheShadowWood.UI
         [SerializeField, Min(0f)] private float successPulseScale = 0.35f;
         [SerializeField, Min(0.01f)] private float successPulseDuration = 0.12f;
 
+        private IPlayerInteractor _interactor;
+        private IInputService _input;
+
         private RectTransform _rectTransform;
         private Vector3 _baseScale;
         private Color _targetColor;
         private float _targetScale;
         private float _pulseTimer;
+
+        [Inject]
+        public void Construct(IPlayerInteractor interactor, IInputService input)
+        {
+            _interactor = interactor;
+            _input = input;
+
+            _interactor.FocusChanged += ApplyFocusState;
+            _interactor.InteractionCompleted += HandleInteractionCompleted;
+            _input.ContextChanged += ApplyContext;
+
+            ApplyFocusState(_interactor.CurrentFocus);
+            ApplyContext(_input.Context);
+        }
 
         private void Awake()
         {
@@ -41,31 +54,22 @@ namespace TheShadowWood.UI
                 _baseScale = _rectTransform.localScale;
             }
 
-            ApplyFocusState(InteractionFocusState.None);
-        }
-
-        private void OnEnable()
-        {
-            if (interactor == null)
+            if (_interactor == null)
             {
-                Debug.LogError($"{nameof(InteractionCrosshairUI)} on {name} requires a PlayerInteractor reference.", this);
-                return;
+                ApplyFocusState(InteractionFocusState.None);
             }
-
-            interactor.FocusChanged += ApplyFocusState;
-            interactor.InteractionCompleted += HandleInteractionCompleted;
-            ApplyFocusState(interactor.CurrentFocus);
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
-            if (interactor == null)
+            if (_interactor == null)
             {
                 return;
             }
 
-            interactor.FocusChanged -= ApplyFocusState;
-            interactor.InteractionCompleted -= HandleInteractionCompleted;
+            _interactor.FocusChanged -= ApplyFocusState;
+            _interactor.InteractionCompleted -= HandleInteractionCompleted;
+            _input.ContextChanged -= ApplyContext;
         }
 
         private void Update()
@@ -91,6 +95,14 @@ namespace TheShadowWood.UI
 
             Vector3 desiredScale = _baseScale * (_targetScale + pulse);
             _rectTransform.localScale = Vector3.Lerp(_rectTransform.localScale, desiredScale, blend);
+        }
+
+        private void ApplyContext(InputContext context)
+        {
+            if (crosshairGraphic != null)
+            {
+                crosshairGraphic.enabled = context == InputContext.Gameplay;
+            }
         }
 
         private void ApplyFocusState(InteractionFocusState state)

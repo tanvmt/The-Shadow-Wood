@@ -1,6 +1,7 @@
 using TheShadowWood.Core.Cameras;
 using TheShadowWood.Interaction;
 using TheShadowWood.Player;
+using TheShadowWood.UI;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -21,6 +22,9 @@ namespace TheShadowWood.Bootstrap
             builder.RegisterEntryPoint<CameraRigBinder>();
             builder.RegisterEntryPoint<PlayerController>();
             builder.RegisterEntryPoint<PlayerInteractor>();
+
+            builder.RegisterComponentInHierarchy<InteractionPromptView>();
+            builder.RegisterComponentInHierarchy<InteractionCrosshairUI>();
         }
     }
 }

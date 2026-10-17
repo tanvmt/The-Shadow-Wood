@@ -3,12 +3,17 @@ using UnityEngine;
 
 namespace TheShadowWood.Interaction
 {
-    /// <summary>
-    /// Base class that owns focus feedback and guards interaction availability.
-    /// Gameplay-specific interactables only implement PerformInteraction.
-    /// </summary>
     public abstract class InteractableBehaviour : MonoBehaviour, IInteractable
     {
+        [Header("Prompt")]
+        [SerializeField] private string prompt = "Interact";
+
+        [Tooltip("Shown instead of the prompt while interaction is blocked. Empty hides the prompt.")]
+        [SerializeField] private string blockedReason;
+
+        [Tooltip("Where the prompt floats. Empty uses the top of the renderer bounds.")]
+        [SerializeField] private Transform promptAnchor;
+
         [Header("Focus Feedback")]
         [Tooltip("Components must implement IInteractionFocusFeedback.")]
         [SerializeField] private MonoBehaviour[] focusFeedbackSources = new MonoBehaviour[0];
@@ -18,6 +23,9 @@ namespace TheShadowWood.Interaction
 
         public Transform InteractionTransform => transform;
         public bool IsFocused => _isFocused;
+        public virtual string Prompt => prompt;
+        public virtual string BlockedReason => blockedReason;
+        public Transform PromptAnchor => promptAnchor;
 
         protected virtual void Awake()
         {
