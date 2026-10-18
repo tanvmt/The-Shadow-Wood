@@ -1,4 +1,6 @@
+using MessagePipe;
 using TheShadowWood.Core.Cameras;
+using TheShadowWood.Core.Flags;
 using TheShadowWood.Core.Pause;
 using TheShadowWood.Interaction;
 using TheShadowWood.Player;
@@ -13,6 +15,11 @@ namespace TheShadowWood.Bootstrap
     {
         protected override void Configure(IContainerBuilder builder)
         {
+            // Progress messages die with the scene, so stale subscribers cannot leak into the next run.
+            MessagePipeOptions options = Parent.Container.Resolve<MessagePipeOptions>();
+            builder.RegisterMessageBroker<FlagChangedMessage>(options);
+            builder.Register<FlagService>(Lifetime.Singleton).As<IFlagService>();
+
             // Scene needs one Player and one CameraRig.
             builder.RegisterComponentInHierarchy<PlayerView>();
             builder.RegisterComponentInHierarchy<PlayerInteractorView>();
