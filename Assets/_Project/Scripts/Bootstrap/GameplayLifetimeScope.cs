@@ -48,6 +48,7 @@ namespace TheShadowWood.Bootstrap
 
             builder.RegisterComponentInHierarchy<SubtitleView>().As<ISubtitleView>();
             builder.RegisterEntryPoint<SubtitleService>();
+            builder.RegisterEntryPoint<ItemPickupNotifier>();
         }
     }
 }

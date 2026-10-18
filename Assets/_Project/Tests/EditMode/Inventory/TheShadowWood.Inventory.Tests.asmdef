@@ -4,6 +4,7 @@
     "references": [
         "TheShadowWood.Inventory",
         "TheShadowWood.Core",
+        "TheShadowWood.Interaction",
         "MessagePipe",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
