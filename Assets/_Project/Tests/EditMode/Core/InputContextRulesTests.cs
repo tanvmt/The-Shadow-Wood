@@ -23,7 +23,17 @@ namespace TheShadowWood.Core.Tests
             Assert.That(rule.Move && rule.Look && rule.Sprint && rule.Crouch && rule.Interact, Is.True);
             Assert.That(rule.Cancel, Is.False);
             Assert.That(rule.Pause, Is.True);
+            Assert.That(rule.Flashlight, Is.True);
             Assert.That(rule.CursorLocked, Is.True);
+        }
+
+        // TV, puzzles and menus must not toggle the beam behind the player's back.
+        [TestCase(InputContext.Focus)]
+        [TestCase(InputContext.Puzzle)]
+        [TestCase(InputContext.UI)]
+        public void NonGameplayContexts_BlockFlashlight(InputContext context)
+        {
+            Assert.That(InputContextRules.Get(context).Flashlight, Is.False);
         }
 
         [TestCase(InputContext.Focus)]

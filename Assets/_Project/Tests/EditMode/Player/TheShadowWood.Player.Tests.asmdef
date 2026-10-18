@@ -3,6 +3,8 @@
     "rootNamespace": "TheShadowWood.Player.Tests",
     "references": [
         "TheShadowWood.Player",
+        "TheShadowWood.Core",
+        "TheShadowWood.Interaction.Tests",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

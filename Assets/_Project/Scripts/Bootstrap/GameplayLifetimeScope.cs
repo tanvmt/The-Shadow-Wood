@@ -34,6 +34,8 @@ namespace TheShadowWood.Bootstrap
             builder.Register<CameraShakeService>(Lifetime.Singleton).As<ICameraShakeService>();
             builder.RegisterEntryPoint<CameraRigBinder>();
             builder.RegisterEntryPoint<PlayerController>();
+            builder.RegisterComponentInHierarchy<FlashlightView>().As<IFlashlightView>();
+            builder.RegisterEntryPoint<FlashlightController>();
             builder.RegisterEntryPoint<PlayerInteractor>();
 
             builder.RegisterEntryPoint<UIScreenService>();
