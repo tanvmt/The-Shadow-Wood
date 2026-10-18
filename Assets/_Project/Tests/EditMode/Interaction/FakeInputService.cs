@@ -17,6 +17,7 @@ namespace TheShadowWood.Interaction.Tests
         public bool InteractPressed { get; set; }
         public bool CancelPressed { get; set; }
         public bool PausePressed { get; set; }
+        public bool FlashlightPressed { get; set; }
         public string InteractBindingLabel { get; set; } = "E";
 
         public IDisposable PushContext(InputContext context)

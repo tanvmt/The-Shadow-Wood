@@ -11,9 +11,10 @@ namespace TheShadowWood.Core.Input
         public bool Interact { get; }
         public bool Cancel { get; }
         public bool Pause { get; }
+        public bool Flashlight { get; }
         public bool CursorLocked { get; }
 
-        public InputContextRule(bool move, bool look, bool sprint, bool crouch, bool interact, bool cancel, bool pause, bool cursorLocked)
+        public InputContextRule(bool move, bool look, bool sprint, bool crouch, bool interact, bool cancel, bool pause, bool flashlight, bool cursorLocked)
         {
             Move = move;
             Look = look;
@@ -22,6 +23,7 @@ namespace TheShadowWood.Core.Input
             Interact = interact;
             Cancel = cancel;
             Pause = pause;
+            Flashlight = flashlight;
             CursorLocked = cursorLocked;
         }
     }
@@ -32,11 +34,11 @@ namespace TheShadowWood.Core.Input
         {
             switch (context)
             {
-                //                                                      move look sprint crouch interact cancel pause cursorLocked
-                case InputContext.Gameplay: return new InputContextRule(true, true, true, true, true, false, true, true);
-                case InputContext.Focus: return new InputContextRule(false, false, false, false, false, true, false, true);
-                case InputContext.Puzzle: return new InputContextRule(false, false, false, false, true, true, false, false);
-                case InputContext.UI: return new InputContextRule(false, false, false, false, false, true, false, false);
+                //                                                      move look sprint crouch interact cancel pause flashlight cursorLocked
+                case InputContext.Gameplay: return new InputContextRule(true, true, true, true, true, false, true, true, true);
+                case InputContext.Focus: return new InputContextRule(false, false, false, false, false, true, false, false, true);
+                case InputContext.Puzzle: return new InputContextRule(false, false, false, false, true, true, false, false, false);
+                case InputContext.UI: return new InputContextRule(false, false, false, false, false, true, false, false, false);
                 default: throw new ArgumentOutOfRangeException(nameof(context), context, "Input context has no rule.");
             }
         }

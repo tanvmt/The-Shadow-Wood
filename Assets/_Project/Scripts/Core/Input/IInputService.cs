@@ -24,6 +24,7 @@ namespace TheShadowWood.Core.Input
         bool InteractPressed { get; }
         bool CancelPressed { get; }
         bool PausePressed { get; }
+        bool FlashlightPressed { get; }
 
         // Interact binding for the last used device, e.g. "E".
         string InteractBindingLabel { get; }

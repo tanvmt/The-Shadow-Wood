@@ -3,6 +3,7 @@
     "rootNamespace": "TheShadowWood.Core.Tests",
     "references": [
         "TheShadowWood.Core",
+        "MessagePipe",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

@@ -56,6 +56,7 @@ Input dùng action map `Player` tại `Assets/_Project/Scripts/Core/Input/InputS
 | Tương tác | `E` | North button |
 | Huỷ / thoát (TV, đóng màn hình) | `Esc` | East button, Start |
 | Pause | `Esc` | Start |
+| Đèn pin (bật/tắt, cần đã nhặt) | `F` | West button |
 
 > Khi thay đổi input action, lưu asset để sinh lại `GameInputActions.cs` và cập nhật bảng quy tắc context. Chi tiết: [Docs/PlayerSystem.md](Docs/PlayerSystem.md#input).
 
@@ -66,18 +67,18 @@ Assets/
 ├── _Project/                         # Nội dung do team phát triển
 │   ├── Animations/                    # Animation nhân vật và môi trường
 │   ├── Audio/                         # Ambience, music, SFX, voiceover
-│   ├── Data/                          # Dữ liệu game
+│   ├── Data/                          # Config SO, Flags/, Items/
 │   ├── Materials/                     # Material nội bộ
 │   ├── Models/                        # Model nhân vật, môi trường và prop
 │   ├── Prefabs/                       # Prefab character, environment, system, interactable
 │   ├── Scenes/                        # Bootstrap, Menu, Gameplay
 │   ├── Scripts/                       # C# theo từng domain
 │   │   ├── Bootstrap/                 # Composition root: LifetimeScope và flow của từng scene
-│   │   ├── Core/                      # Contract dùng chung, scene loader, input service
+│   │   ├── Core/                      # Contract dùng chung, scene loader, input service, flag service, item contract
 │   │   ├── Editor/                    # Công cụ Editor (Scene Switcher)
 │   │   ├── Interaction/               # Raycast, focus và interactable
-│   │   ├── Inventory/                 # Pickup contract
-│   │   ├── Player/                    # FPS controller, look, camera rig, focus/rung camera
+│   │   ├── Inventory/                 # InventoryService, PickupItem
+│   │   ├── Player/                    # FPS controller, look, camera rig, focus/rung camera, đèn pin
 │   │   ├── UI/                        # Screen service, menu, pause, settings, fade, subtitle, crosshair
 │   │   └── Audio/, Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
 │   ├── Settings/                      # VContainerSettings, Input System settings
@@ -92,6 +93,7 @@ Docs/
 ├── PlayerSystem.md                    # Input context, camera, FPS controller
 ├── InteractionSystem.md               # Tài liệu interaction
 ├── UISystem.md                        # Màn hình, pause, settings, fade, subtitle
+├── FlagsInventory.md                  # Flag, inventory, pickup, đèn pin
 └── DevelopmentPlan.md                 # Kế hoạch phát triển theo branch
 ```
 
@@ -116,14 +118,17 @@ Luồng tương tác: camera raycast từ giữa màn hình → `PlayerInteracto
 
 | Thành phần | Vai trò |
 | --- | --- |
-| `PlayerInteractor` | Tự lấy `Camera.main` nếu chưa gán. Khoảng cách mặc định 3 m. Vẫn nhận input qua `PlayerInput` + `Send Messages`, chưa gắn vào `Player.prefab` mới; chuyển sang `IInputService` ở `feat/interaction-di`. |
+| `PlayerInteractor` | C# thuần, raycast từ camera của `CameraRig`, khoảng cách mặc định 3 m. Đọc `IInputService`, chỉ chạy ở context `Gameplay`. |
 | `InteractableBehaviour` | Base class cho mọi đối tượng tương tác. |
 | `DestroyOnInteract` | Object dùng một lần; tắt collider rồi bị destroy khi tương tác thành công. |
-| `PickupItem` | Chỉ hủy world item khi receiver trên player chấp nhận item. |
-| `PickupReceiverBehaviour` | Contract để inventory quyết định nhận hoặc từ chối item. |
+| `PickupItem` | Nhặt `ItemDefinition` vào `IInventoryService`; chỉ hủy world item khi inventory nhận. |
 | `InteractionCrosshairUI` | Crosshair phản hồi target đang focus. |
 
 Hướng dẫn cấu hình chi tiết, outline và test case: [Docs/InteractionSystem.md](Docs/InteractionSystem.md).
+
+### Flag và inventory
+
+Tiến trình chơi lưu ở hai service trong scope Gameplay: `IFlagService` (flag bool, asset `FlagId`) và `IInventoryService` (item, asset `ItemDefinition`). Flag và item đều là ScriptableObject trong `Assets/_Project/Data/Flags/` và `Data/Items/`, nên đổi tên không làm hỏng reference. Nhặt đồ hiện subtitle `Picked up: …`. Đèn pin chỉ bật được sau khi nhặt item `Flashlight`. Chi tiết: [Docs/FlagsInventory.md](Docs/FlagsInventory.md).
 
 ### UI
 
@@ -160,20 +165,12 @@ Không chỉ raycast vào layer `Interactable`: raycast phải nhìn thấy tư�
 
 ### Pickup
 
-1. Thêm `PickupItem` vào world item.
-2. Điền `Item Id` và `Quantity`.
-3. Cài component kế thừa `PickupReceiverBehaviour` trên player.
-4. Play-test cả trường hợp inventory chấp nhận và từ chối: item chỉ bị destroy khi nhận thành công.
+1. Tạo item nếu chưa có: **Create → The Shadow Wood → Items → Item** trong `Assets/_Project/Data/Items/`.
+2. Kéo `Assets/_Project/Prefabs/Interactables/PickupItem_Base.prefab` vào dưới root `Interactables` của scene.
+3. Gán `Item`, đổi mesh theo đồ thật.
+4. Play-test cả trường hợp nhặt được và inventory đầy: item chỉ bị destroy khi nhận thành công.
 
-```csharp
-public sealed class PlayerInventory : PickupReceiverBehaviour
-{
-    public override bool TryReceive(PickupRequest request)
-    {
-        return TryAdd(request.ItemId, request.Quantity);
-    }
-}
-```
+Flag mới tạo bằng **Create → The Shadow Wood → Flags → Flag** trong `Data/Flags/`. Chi tiết: [Docs/FlagsInventory.md](Docs/FlagsInventory.md).
 
 ### Scene mới
 
@@ -193,7 +190,9 @@ Chạy qua **Window → General → Test Runner → EditMode → Run All**. Test
 | `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/LifetimeScopeTests.cs` | Container Root/Gameplay build được, MessagePipe publish/subscribe đúng |
 | `TheShadowWood.Bootstrap.Tests` | `Tests/EditMode/Bootstrap/SceneLoaderTests.cs` | Chặn load trùng, kiểm tra Build Settings, reset `IsLoading` khi lỗi/cancel |
 | `TheShadowWood.Core.Tests` | `Tests/EditMode/Core/InputContext*Tests.cs` | Bảng quy tắc context, push/dispose context stack |
-| `TheShadowWood.Player.Tests` | `Tests/EditMode/Player/*Tests.cs` | Look, motor, crouch, stamina, head bob |
+| `TheShadowWood.Core.Tests` | `Tests/EditMode/Core/FlagServiceTests.cs` | Set/Clear flag, chỉ publish khi đổi |
+| `TheShadowWood.Inventory.Tests` | `Tests/EditMode/Inventory/*Tests.cs` | Inventory add/remove/giới hạn, pickup bị chặn |
+| `TheShadowWood.Player.Tests` | `Tests/EditMode/Player/*Tests.cs` | Look, motor, crouch, stamina, head bob, đèn pin |
 
 Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, Play từ `Bootstrap` và đi hết luồng `Menu` → `Gameplay`. Nếu thay đổi controller hoặc interaction, play-test thêm trong `Gameplay`.
 
@@ -214,11 +213,11 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 | Asset thiếu hoặc là file pointer nhỏ | Chạy `git lfs pull`, rồi mở lại project. |
 | Package/compile lỗi sau clone | Đóng Unity, xóa **chỉ** `Library/` rồi mở lại để Unity import lại package/asset. |
 | Không thể tương tác | Kiểm tra camera `MainCamera`, `PlayerInteractor`, collider, visibility layer và vật cản gần camera. |
-| Pickup không biến mất | Kiểm tra player có subclass `PickupReceiverBehaviour` và `TryReceive` trả `true`. |
+| Pickup không biến mất / hiện `Can't carry more` | Kiểm tra `PickupItem` đã gán `Item`, nằm dưới root `Interactables` (auto-inject), và inventory chưa đủ `Max Count`. |
 | Player không đi/nhìn được, con trỏ không khoá | Có context `UI`/`Focus`/`Puzzle` chưa được dispose. Kiểm tra `IInputService.Context` và class đã push context. |
 | Player lún nửa dưới sàn | Pivot của Player phải ở chân: `Visual` và `CameraRoot` nằm trên pivot, đặt `y` của Player bằng mặt sàn. |
 | Hai camera cùng nghe âm thanh | Tắt hoặc xóa `AudioListener` thừa; chỉ để một listener enabled. |
 
 ---
 
-Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md) · [UI System](Docs/UISystem.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md) · [UI System](Docs/UISystem.md) · [Flags & Inventory](Docs/FlagsInventory.md)

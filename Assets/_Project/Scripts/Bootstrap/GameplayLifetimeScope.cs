@@ -1,6 +1,10 @@
+using MessagePipe;
 using TheShadowWood.Core.Cameras;
+using TheShadowWood.Core.Flags;
+using TheShadowWood.Core.Items;
 using TheShadowWood.Core.Pause;
 using TheShadowWood.Interaction;
+using TheShadowWood.Inventory;
 using TheShadowWood.Player;
 using TheShadowWood.UI;
 using UnityEngine;
@@ -13,6 +17,14 @@ namespace TheShadowWood.Bootstrap
     {
         protected override void Configure(IContainerBuilder builder)
         {
+            // Progress messages die with the scene, so stale subscribers cannot leak into the next run.
+            MessagePipeOptions options = Parent.Container.Resolve<MessagePipeOptions>();
+            builder.RegisterMessageBroker<FlagChangedMessage>(options);
+            builder.Register<FlagService>(Lifetime.Singleton).As<IFlagService>();
+            builder.RegisterMessageBroker<ItemAddedMessage>(options);
+            builder.RegisterMessageBroker<ItemRemovedMessage>(options);
+            builder.Register<InventoryService>(Lifetime.Singleton).As<IInventoryService>();
+
             // Scene needs one Player and one CameraRig.
             builder.RegisterComponentInHierarchy<PlayerView>();
             builder.RegisterComponentInHierarchy<PlayerInteractorView>();
@@ -22,6 +34,8 @@ namespace TheShadowWood.Bootstrap
             builder.Register<CameraShakeService>(Lifetime.Singleton).As<ICameraShakeService>();
             builder.RegisterEntryPoint<CameraRigBinder>();
             builder.RegisterEntryPoint<PlayerController>();
+            builder.RegisterComponentInHierarchy<FlashlightView>().As<IFlashlightView>();
+            builder.RegisterEntryPoint<FlashlightController>();
             builder.RegisterEntryPoint<PlayerInteractor>();
 
             builder.RegisterEntryPoint<UIScreenService>();
@@ -36,6 +50,7 @@ namespace TheShadowWood.Bootstrap
 
             builder.RegisterComponentInHierarchy<SubtitleView>().As<ISubtitleView>();
             builder.RegisterEntryPoint<SubtitleService>();
+            builder.RegisterEntryPoint<ItemPickupNotifier>();
         }
     }
 }
