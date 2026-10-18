@@ -1,8 +1,10 @@
 using MessagePipe;
 using TheShadowWood.Core.Cameras;
 using TheShadowWood.Core.Flags;
+using TheShadowWood.Core.Items;
 using TheShadowWood.Core.Pause;
 using TheShadowWood.Interaction;
+using TheShadowWood.Inventory;
 using TheShadowWood.Player;
 using TheShadowWood.UI;
 using UnityEngine;
@@ -19,6 +21,9 @@ namespace TheShadowWood.Bootstrap
             MessagePipeOptions options = Parent.Container.Resolve<MessagePipeOptions>();
             builder.RegisterMessageBroker<FlagChangedMessage>(options);
             builder.Register<FlagService>(Lifetime.Singleton).As<IFlagService>();
+            builder.RegisterMessageBroker<ItemAddedMessage>(options);
+            builder.RegisterMessageBroker<ItemRemovedMessage>(options);
+            builder.Register<InventoryService>(Lifetime.Singleton).As<IInventoryService>();
 
             // Scene needs one Player and one CameraRig.
             builder.RegisterComponentInHierarchy<PlayerView>();
