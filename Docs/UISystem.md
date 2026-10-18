@@ -73,6 +73,7 @@ builder.RegisterEntryPoint<PausePresenter>();
 builder.RegisterEntryPoint<SettingsPresenter>();
 builder.RegisterComponentInHierarchy<SubtitleView>().As<ISubtitleView>();
 builder.RegisterEntryPoint<SubtitleService>();
+builder.RegisterEntryPoint<ItemPickupNotifier>();
 ```
 
 **Vì sao `UIScreenService` và `GamePause` đăng ký theo scene, không ở Root:** stack context của `InputService` là global (Root), còn màn hình là object của scene. Service ở scene scope bị dispose cùng scene, trả hết vé context và vé pause. Nếu đặt ở Root, về Menu lúc đang mở Pause sẽ để lại vé `UI` mồ côi và vào lại Gameplay bị kẹt chuột, không đi được.
@@ -183,7 +184,9 @@ _subtitles.Hide();
 
 - Dòng mới thay dòng cũ và reset thời gian. Text rỗng thì ẩn.
 - Đếm theo scaled time, nên đứng yên khi pause.
+- `ItemPickupNotifier` (`UI/Items`) dùng subtitle để báo `Picked up: …` khi nhặt đồ. Xem [FlagsInventory.md](FlagsInventory.md).
 - Action `ShowSubtitle` của scripted sequence (`feat/scripted-sequence`) sẽ gọi service này.
+- `SubtitleView` trong scene phải để **active**. View tự ẩn label ở `Awake`; tắt cả GameObject thì `Display` vẫn chạy nhưng không bao giờ thấy chữ.
 
 ## Setup scene
 
@@ -210,6 +213,7 @@ Style chung: nút xám đen `0.12`, hover/chọn `0.28`, nhấn `0.4`; chữ xá
 |---|---|---|
 | `TheShadowWood.UI.Tests` | `UI/UIScreenServiceTests.cs` | Mở/đóng, mở trùng, chồng màn hình, Cancel đóng màn trên cùng, màn không đóng bằng Cancel, `Dispose` trả context |
 | `TheShadowWood.UI.Tests` | `UI/SubtitleServiceTests.cs` | Hiện, hết giờ thì ẩn, dòng mới reset giờ, duration 0, text rỗng |
+| `TheShadowWood.UI.Tests` | `UI/ItemPickupNotifierTests.cs` | Câu `Picked up: …` một cái và nhiều cái |
 | `TheShadowWood.Bootstrap.Tests` | `Bootstrap/SceneTransitionTests.cs` | Thứ tự fade → load → fade, load bị từ chối, lỗi không kẹt màn đen, chặn gọi chồng |
 | `TheShadowWood.Core.Tests` | `Core/GamePauseTests.cs` | Dừng time/audio, vé lồng nhau, dispose vé hai lần, `Dispose` luôn resume |
 | `TheShadowWood.Core.Tests` | `Core/GameSettingsTests.cs` | Mặc định, đọc + clamp giá trị đã lưu, event `Changed`, chỉ ghi khi `Save()` |
@@ -242,3 +246,4 @@ Style chung: nút xám đen `0.12`, hover/chọn `0.28`, nhấn `0.4`; chữ xá
 | Game đứng hình sau khi về Menu | `GamePause` không được đăng ký ở scope scene, hoặc có class giữ vé `IGamePause` sống ở Root |
 | Màn hình bị Pause đè sai thứ tự | Đổi thứ tự sibling trong Canvas: phần tử sau vẽ đè lên phần tử trước |
 | Chữ tiếng Việt hiện ô vuông | Font LiberationSans SDF không có dấu. Cần font asset tiếng Việt |
+| Gọi `ISubtitleService.Show` mà không thấy chữ | GameObject `SubtitleView` trong scene bị tắt. Bật lại, view tự ẩn label khi không có chữ |

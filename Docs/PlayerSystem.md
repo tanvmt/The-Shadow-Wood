@@ -18,6 +18,7 @@ GameplayLifetimeScope
 │    ├─ CrouchState       chiều cao, giữ cúi khi bị trần chặn
 │    ├─ StaminaModel      tiêu hao theo vận tốc thực
 │    └─ HeadBob           offset quanh vị trí gốc của CameraRoot
+├─ FlashlightController   bật/tắt FlashlightView khi đã có item Flashlight
 ├─ CameraRigBinder        gán FpsCamera theo CameraRoot lúc Start
 ├─ CameraFocusService     (ICameraFocusService) tự push context Focus
 └─ CameraShakeService     (ICameraShakeService) bọc CinemachineImpulseSource
@@ -39,13 +40,14 @@ Logic nằm trong class C# thuần, nhận config qua constructor nên test Edit
 | `Player/Look/FirstPersonLook.cs`, `FirstPersonLookConfig.cs` | Player | Yaw/pitch, sensitivity, clamp |
 | `Player/Movement/*.cs` | Player | `FirstPersonMotor`, `CrouchState`, `StaminaModel`, `HeadBob`, `PlayerMovementConfig` |
 | `Player/Camera/*.cs` | Player | `CameraRig`, `CameraRigBinder`, `CameraFocusService`, `CameraShakeService` |
+| `Player/Flashlight/*.cs` | Player | `IFlashlightView`, `FlashlightView`, `FlashlightController`. Xem [FlagsInventory.md](FlagsInventory.md#đèn-pin) |
 | `Player/Dev/CameraSandboxDebug.cs` | Player | Phím test focus/rung, chỉ dùng khi dev |
 
 Asset:
 
 | Asset | Vai trò |
 |---|---|
-| `Assets/_Project/Prefabs/Characters/Player.prefab` | Player: `CharacterController`, `PlayerView`, `CameraRoot`, `Visual` |
+| `Assets/_Project/Prefabs/Characters/Player.prefab` | Player: `CharacterController`, `PlayerView`, `CameraRoot` (con: `Flashlight`), `Visual` |
 | `Assets/_Project/Prefabs/System/CameraRig.prefab` | `Main Camera` (Brain), `FpsCamera`, `FocusCamera` |
 | `Assets/_Project/Data/Player/FirstPersonLookConfig.asset` | Độ nhạy chuột/gamepad, invert Y, giới hạn pitch |
 | `Assets/_Project/Data/Player/PlayerMovementConfig.asset` | Tốc độ, gravity, crouch, stamina, head bob |
@@ -64,6 +66,7 @@ Asset:
 | Tương tác | `E` | North button | |
 | Huỷ / thoát (`Cancel`) | `Esc` | East button (B), Start | Thoát TV, đóng màn hình |
 | Pause | `Esc` | Start | Chỉ bật ở `Gameplay` |
+| Đèn pin | `F` | West button | Bật/tắt, chỉ bật ở `Gameplay`, cần đã nhặt item `Flashlight` |
 
 Không có jump: nhà là màn chơi trong nhà, nhảy dễ phá nhịp horror.
 
@@ -71,12 +74,12 @@ Không có jump: nhà là màn chơi trong nhà, nhảy dễ phá nhịp horror.
 
 Hệ thống nào cần chiếm quyền điều khiển thì push một context và giữ handle, dispose handle để trả lại. Context trên đỉnh stack quyết định action nào bật và con trỏ:
 
-| Context | Move | Look | Sprint | Crouch | Interact | Cancel | Pause | Con trỏ | Dùng cho |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
-| `Gameplay` | ✓ | ✓ | ✓ | ✓ | ✓ | – | ✓ | Khoá, ẩn | Mặc định (đáy stack) |
-| `Focus` | – | – | – | – | – | ✓ | – | Khoá, ẩn | TV, cutscene, ending |
-| `Puzzle` | – | – | – | – | ✓ | ✓ | – | Hiện | Lá bùa, keypad, bàn thờ |
-| `UI` | – | – | – | – | – | ✓ | – | Hiện | Note, pause, menu |
+| Context | Move | Look | Sprint | Crouch | Interact | Cancel | Pause | Flashlight | Con trỏ | Dùng cho |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
+| `Gameplay` | ✓ | ✓ | ✓ | ✓ | ✓ | – | ✓ | ✓ | Khoá, ẩn | Mặc định (đáy stack) |
+| `Focus` | – | – | – | – | – | ✓ | – | – | Khoá, ẩn | TV, cutscene, ending |
+| `Puzzle` | – | – | – | – | ✓ | ✓ | – | – | Hiện | Lá bùa, keypad, bàn thờ |
+| `UI` | – | – | – | – | – | ✓ | – | – | Hiện | Note, pause, menu |
 
 `Pause` và `Cancel` dùng chung phím Esc nên mỗi context bật đúng một trong hai.
 
@@ -112,7 +115,7 @@ Quy tắc:
 - Menu mở qua `UIScreenService`, nên context `UI` được push khi vào Menu và trả lại khi scene Menu unload.
 - `Look` của chuột là delta mỗi frame, của gamepad là giá trị stick. `LookIsPointerDelta` cho biết nguồn để `FirstPersonLook` không nhân `deltaTime` với delta chuột. Đọc `Look` trước `LookIsPointerDelta` trong cùng frame.
 
-Thêm action mới: sửa `InputSystem_Actions.inputactions`, lưu để sinh lại `GameInputActions.cs`, thêm cột vào `InputContextRule` và `InputContextRules`, thêm property vào `IInputService`/`InputService`, cập nhật `InputContextRulesTests`. Trường hợp như "vẫn đi được nhưng không nhìn được" thì thêm context mới vào bảng, không thêm cơ chế khoá riêng.
+Thêm action mới (ví dụ gần nhất: `Flashlight`): sửa `InputSystem_Actions.inputactions`, lưu để sinh lại `GameInputActions.cs`, thêm cột vào `InputContextRule` và `InputContextRules`, thêm property vào `IInputService`/`InputService`, cập nhật `InputContextRulesTests`. Trường hợp như "vẫn đi được nhưng không nhìn được" thì thêm context mới vào bảng, không thêm cơ chế khoá riêng.
 
 ## Camera
 
@@ -152,6 +155,7 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 |---|---|
 | `Player` (root) | Layer `Player`. `CharacterController`: Height 1.8, Center (0, 0.9, 0), Radius 0.5, Skin Width 0.08. `PlayerView`. `PlayerInteractorView` (xem [InteractionSystem.md](InteractionSystem.md)) |
 | `CameraRoot` | Local (0, 1.6, 0). Pitch đặt ở đây |
+| `CameraRoot/Flashlight` | Local (0.2, −0.2, 0). Spot light (mặc định tắt), `FlashlightView` |
 | `Visual` | Capsule, local (0, 0.9, 0), scale (1, 0.9, 1) |
 
 Đặt Player trong scene với `y` bằng mặt sàn. Nếu đặt pivot ở giữa thân, controller sẽ rơi xuống cho tới khi đáy collider chạm đất và `Visual` bị chìm nửa dưới sàn.
@@ -204,26 +208,29 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 
 ## Setup scene gameplay
 
-Scene `Gameplay` hiện vừa là scene chơi vừa là sandbox: có `Map` (dựng từ `StarterAssets/Environment`), `CameraSandboxDebug` và `FocusPose`.
+Scene `Gameplay` hiện vừa là scene chơi vừa là sandbox: có `Map` (dựng từ `StarterAssets/Environment`), cube test, TV và ba pickup (Candle, Lighter, Flashlight).
 
 1. Kéo `Player.prefab` vào scene, `y` bằng mặt sàn.
 2. Kéo `CameraRig.prefab` vào scene. Xoá `Main Camera` mặc định của scene để chỉ còn một camera và một `AudioListener`.
-3. `GameplayLifetimeScope` tự tìm `PlayerView`, `PlayerInteractorView` và `CameraRig` trong hierarchy (`RegisterComponentInHierarchy`), không cần kéo reference. Camera của scene được đăng ký từ `CameraRig.OutputCamera`, không cần tag `MainCamera`.
+3. `GameplayLifetimeScope` tự tìm `PlayerView`, `PlayerInteractorView`, `FlashlightView` và `CameraRig` trong hierarchy (`RegisterComponentInHierarchy`), không cần kéo reference. Camera của scene được đăng ký từ `CameraRig.OutputCamera`, không cần tag `MainCamera`.
 4. Kiểm tra `PlayerView` đã gán `Controller`, `Camera Root`, `Look Config`, `Movement Config`.
 
-Test nhanh camera bằng `CameraSandboxDebug`: thêm vào danh sách **Auto Inject Game Objects** của `GameplayLifetimeScope`, gán `Focus Pose`. Khi Play: `F` focus/thả, `Esc` thả, `G` rung. Bỏ component này khỏi scene khi dựng màn thật.
+Test nhanh camera bằng `CameraSandboxDebug` (đã gỡ khỏi scene): thêm vào danh sách **Auto Inject Game Objects** của `GameplayLifetimeScope`, gán `Focus Pose`. Khi Play: `F` focus/thả, `Esc` thả, `G` rung. Phím `F` trùng với đèn pin, nên gỡ component này ra sau khi test xong.
 
 ## Kiểm thử
 
 | Assembly | File | Bao phủ |
 |---|---|---|
-| `TheShadowWood.Core.Tests` | `Core/InputContextRulesTests.cs` | Bảng quy tắc từng context |
+| `TheShadowWood.Core.Tests` | `Core/InputContextRulesTests.cs` | Bảng quy tắc từng context, `Flashlight` chỉ bật ở `Gameplay` |
 | `TheShadowWood.Core.Tests` | `Core/InputContextStackTests.cs` | Push/dispose lồng nhau, dispose sai thứ tự, dispose hai lần, event `Changed` |
 | `TheShadowWood.Player.Tests` | `Player/FirstPersonLookTests.cs` | Sensitivity chuột/gamepad, `SensitivityScale` từ settings, invert, clamp pitch |
 | `TheShadowWood.Player.Tests` | `Player/FirstPersonMotorTests.cs` | Tăng tốc, gravity, grounded, terminal velocity |
 | `TheShadowWood.Player.Tests` | `Player/CrouchStateTests.cs` | Toggle, chuyển chiều cao, giữ cúi khi trần chặn |
 | `TheShadowWood.Player.Tests` | `Player/StaminaModelTests.cs` | Tiêu hao, regen delay, khoá khi cạn |
 | `TheShadowWood.Player.Tests` | `Player/HeadBobTests.cs` | Offset không cộng dồn, trở về 0 khi dừng |
+| `TheShadowWood.Player.Tests` | `Player/FlashlightControllerTests.cs` | Không có item thì không bật, có item thì toggle |
+
+`TheShadowWood.Player.Tests` tham chiếu `TheShadowWood.Interaction.Tests` để dùng chung `FakeInputService`.
 
 Play-test thủ công khi sửa phần player: đi/chạy/cúi dưới vật thấp, chạy tới khi cạn stamina, focus rồi `Esc`, mở menu rồi vào game xem con trỏ có khoá lại không, alt-tab trong lúc chơi.
 

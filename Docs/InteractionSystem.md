@@ -24,12 +24,12 @@ GameplayLifetimeScope
            InteractableBehaviour.Interact
              ├─ DestroyOnInteract
              ├─ TVInteractable ──► ICameraFocusService (push context Focus)
-             └─ PickupItem ──► PickupReceiverBehaviour
+             └─ PickupItem ──► IInventoryService.TryAdd
 ```
 
 Context rời khỏi `Gameplay` (vào `Focus`, `UI`, `Puzzle`) thì interactor bỏ focus ngay, prompt và crosshair ẩn. `Puzzle` vẫn bật action `Interact` nhưng puzzle controller tự đọc `InteractPressed`, interactor không raycast song song.
 
-Assembly: `Interaction` chỉ phụ thuộc `Core`. `UI` và `Inventory` tham chiếu một chiều tới `Interaction`. `Player` không cần biết `Interaction`: camera được đưa vào qua registration trong scope.
+Assembly: `Interaction` chỉ phụ thuộc `Core`. `UI` và `Inventory` tham chiếu một chiều tới `Interaction`. Contract inventory (`IInventoryService`, `ItemDefinition`) nằm ở `Core/Items`, nên feature khác dùng inventory không cần tham chiếu `Inventory`. `Player` không cần biết `Interaction`: camera được đưa vào qua registration trong scope.
 
 ## File chính
 
@@ -47,7 +47,7 @@ Assembly: `Interaction` chỉ phụ thuộc `Core`. `UI` và `Inventory` tham ch
 | `TVInteractable.cs` | TV phát video, camera blend vào màn hình. Xem [TVInteractable.md](TVInteractable.md) |
 | `UI/InteractionPromptView.cs` | Một label TMP world space dùng chung, bám theo object đang focus |
 | `UI/InteractionCrosshairUI.cs` | Chấm crosshair phản ứng theo focus |
-| `Inventory/PickupItem.cs`, `PickupReceiverBehaviour.cs` | Pickup qua receiver. Sẽ được thay bằng `IInventoryService` ở `feat/flags-inventory` |
+| `Inventory/PickupItem.cs` | Nhặt `ItemDefinition` vào `IInventoryService`. Xem [FlagsInventory.md](FlagsInventory.md) |
 
 ## Đăng ký trong scope
 
@@ -109,6 +109,7 @@ Gameplay
  ├─ InteractionPrompt
  └─ Interactables            ← mọi interactable đặt dưới đây
      ├─ InteractableItem_Base
+     ├─ Pickup_Candle, Pickup_Lighter, Pickup_Flashlight
      └─ TV
 ```
 
@@ -170,12 +171,7 @@ Prefab test: `Assets/_Project/Prefabs/Interactables/InteractableItem_Base.prefab
 
 ## Tạo pickup Inventory
 
-Tạm thời giữ cơ chế cũ cho tới `feat/flags-inventory`:
-
-1. Add `PickupItem`, điền `Item Id`, `Quantity`, gán highlight.
-2. Player cần component kế thừa `PickupReceiverBehaviour`.
-
-`PickupItem` chỉ destroy world object khi `TryReceive` trả `true`.
+Dùng `Assets/_Project/Prefabs/Interactables/PickupItem_Base.prefab`, gán `Item`, đặt dưới root `Interactables`. `PickupItem` chỉ destroy world object khi `IInventoryService.TryAdd` thành công; inventory đầy thì hiện `Blocked Reason` và object ở lại. Chi tiết: [FlagsInventory.md](FlagsInventory.md#đặt-pickup-trong-scene).
 
 ## Outline/highlight
 
@@ -247,6 +243,8 @@ EditMode: `Assets/_Project/Tests/EditMode/Interaction/` (assembly `TheShadowWood
 
 `InteractionPromptTextTests`: không target, tương tác được (`[E] …`), bị chặn có lý do, bị chặn không lý do, prompt rỗng.
 
+Test của `PickupItem` nằm ở `Tests/EditMode/Inventory/PickupItemTests.cs`, xem [FlagsInventory.md](FlagsInventory.md#kiểm-thử).
+
 Checklist play test:
 
 - Nhìn cube → highlight, crosshair to lên, prompt nổi trên cube.
@@ -255,3 +253,4 @@ Checklist play test:
 - `E` và gamepad North gọi đúng một lần. Dùng gamepad thì nhãn phím đổi theo.
 - Cube bị destroy khi đang focus → prompt và highlight biến mất.
 - Vào TV → prompt và crosshair ẩn, thoát ra thì hiện lại.
+- Nhặt pickup → subtitle `Picked up: …`, object biến mất.
