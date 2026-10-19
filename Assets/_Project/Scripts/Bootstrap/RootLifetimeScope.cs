@@ -1,4 +1,5 @@
 using MessagePipe;
+using TheShadowWood.Audio;
 using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Scenes;
 using TheShadowWood.Core.Settings;
@@ -25,6 +26,8 @@ namespace TheShadowWood.Bootstrap
 
             builder.Register<PlayerPrefsSettingsStore>(Lifetime.Singleton).As<ISettingsStore>();
             builder.Register<GameSettings>(Lifetime.Singleton).As<IGameSettings>();
+
+            builder.RegisterEntryPoint<AudioService>();
         }
     }
 }
