@@ -858,6 +858,7 @@ MonoBehaviour:
   autoInjectGameObjects:
   - {fileID: 0}
   - {fileID: 1132884086}
+  audioConfig: {fileID: 11400000, guid: afacff9c893dbc3884968cbf2b0e0ad1, type: 2}
 --- !u!1001 &1276951976
 PrefabInstance:
   m_ObjectHideFlags: 0

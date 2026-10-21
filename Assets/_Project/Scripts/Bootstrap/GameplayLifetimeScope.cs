@@ -1,4 +1,5 @@
 using MessagePipe;
+using TheShadowWood.Audio;
 using TheShadowWood.Core.Cameras;
 using TheShadowWood.Core.Flags;
 using TheShadowWood.Core.Items;
@@ -15,6 +16,8 @@ namespace TheShadowWood.Bootstrap
 {
     public class GameplayLifetimeScope : LifetimeScope
     {
+        [SerializeField] private GameplayAudioConfig audioConfig;
+
         protected override void Configure(IContainerBuilder builder)
         {
             // Progress messages die with the scene, so stale subscribers cannot leak into the next run.
@@ -37,6 +40,14 @@ namespace TheShadowWood.Bootstrap
             builder.RegisterComponentInHierarchy<FlashlightView>().As<IFlashlightView>();
             builder.RegisterEntryPoint<FlashlightController>();
             builder.RegisterEntryPoint<PlayerInteractor>();
+
+            if (audioConfig == null)
+            {
+                throw new System.InvalidOperationException($"{name}: Audio Config is not assigned.");
+            }
+
+            builder.RegisterInstance(audioConfig);
+            builder.RegisterEntryPoint<AmbiencePlayer>().AsSelf();
 
             builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<InteractionPromptView>();
