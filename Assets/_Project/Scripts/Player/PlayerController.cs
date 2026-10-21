@@ -1,4 +1,5 @@
 using System;
+using TheShadowWood.Core.Audio;
 using TheShadowWood.Core.Input;
 using TheShadowWood.Core.Settings;
 using UnityEngine;
@@ -13,6 +14,7 @@ namespace TheShadowWood.Player
         private readonly PlayerView _view;
         private readonly IInputService _input;
         private readonly IGameSettings _settings;
+        private readonly IAudioService _audio;
         private readonly PlayerMovementConfig _config;
         private readonly FirstPersonLook _look;
         private readonly FirstPersonMotor _motor;
@@ -24,11 +26,12 @@ namespace TheShadowWood.Player
         private float _horizontalSpeed;
         private bool _isSprinting;
 
-        public PlayerController(PlayerView view, IInputService input, IGameSettings settings)
+        public PlayerController(PlayerView view, IInputService input, IGameSettings settings, IAudioService audio)
         {
             _view = view;
             _input = input;
             _settings = settings;
+            _audio = audio;
             _config = view.MovementConfig;
             _look = new FirstPersonLook(view.LookConfig);
             _motor = new FirstPersonMotor(_config);
@@ -103,8 +106,35 @@ namespace TheShadowWood.Player
                 : _isSprinting ? _config.SprintBobFrequency
                 : _config.WalkBobFrequency;
             _headBob.Tick(_horizontalSpeed, _view.Controller.isGrounded, frequency, deltaTime);
+            if (_headBob.Stepped)
+            {
+                PlayFootstep();
+            }
 
             ApplyCameraRoot();
+        }
+
+        private void PlayFootstep()
+        {
+            FootstepConfig footsteps = _view.Footsteps;
+            if (footsteps == null)
+            {
+                return;
+            }
+
+            // Starts just inside the capsule, so the ray never hits the player's own controller.
+            Vector3 feet = _view.Body.position;
+            Vector3 origin = feet + Vector3.up * 0.1f;
+            PhysicsMaterial material = null;
+            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, footsteps.RayLength + 0.1f,
+                    footsteps.GroundMask, QueryTriggerInteraction.Ignore))
+            {
+                material = hit.collider.sharedMaterial;
+                feet = hit.point;
+            }
+
+            float volume = footsteps.VolumeFor(_crouch.IsCrouching, _isSprinting);
+            _audio.PlayAt(footsteps.CueFor(material), feet, volume);
         }
 
         private void ApplySettings()

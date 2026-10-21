@@ -52,6 +52,7 @@ MonoBehaviour:
   cameraRoot: {fileID: 313619108966861778}
   lookConfig: {fileID: 11400000, guid: d09f414df21cb464eb70cefe2207af83, type: 2}
   movementConfig: {fileID: 11400000, guid: ab9d97f01d4340b46b7215e032d843c1, type: 2}
+  footsteps: {fileID: 11400000, guid: 593f4dc28d56fe0518a9a76ebf21dda0, type: 2}
 --- !u!143 &2658040494002419196
 CharacterController:
   m_ObjectHideFlags: 0
