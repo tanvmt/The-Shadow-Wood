@@ -6,6 +6,9 @@ namespace TheShadowWood.Player
     {
         private const float MinSpeed = 0.1f;
 
+        // Phase where the vertical bob hits its lowest point; one per PI.
+        private const float StepPhase = Mathf.PI * 0.75f;
+
         private readonly PlayerMovementConfig _config;
         private float _phase;
 
@@ -17,8 +20,13 @@ namespace TheShadowWood.Player
         // Offset to add on top of the camera root's base position. Never accumulates.
         public Vector2 Offset { get; private set; }
 
+        // True on the tick the bob passes its lowest point, i.e. a foot lands.
+        public bool Stepped { get; private set; }
+
         public Vector2 Tick(float horizontalSpeed, bool grounded, float frequency, float deltaTime)
         {
+            Stepped = false;
+
             if (!grounded || horizontalSpeed < MinSpeed)
             {
                 Offset = Vector2.Lerp(Offset, Vector2.zero, 1f - Mathf.Exp(-_config.BobReturnSpeed * deltaTime));
@@ -26,7 +34,9 @@ namespace TheShadowWood.Player
             }
 
             float amplitudeScale = Mathf.Clamp01(horizontalSpeed / _config.WalkSpeed);
-            _phase = Mathf.Repeat(_phase + frequency * deltaTime * Mathf.PI, Mathf.PI * 2f);
+            float advanced = _phase + frequency * deltaTime * Mathf.PI;
+            Stepped = Mathf.Floor((advanced - StepPhase) / Mathf.PI) > Mathf.Floor((_phase - StepPhase) / Mathf.PI);
+            _phase = Mathf.Repeat(advanced, Mathf.PI * 2f);
 
             // One sway per two steps, one dip per step.
             Offset = new Vector2(

@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using MessagePipe;
 using NUnit.Framework;
+using TheShadowWood.Core.Audio;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -50,6 +51,12 @@ namespace TheShadowWood.Bootstrap.Tests
         public void Root_InitializesGlobalMessagePipe()
         {
             Assert.That(GlobalMessagePipe.IsInitialized, Is.True);
+        }
+
+        [Test]
+        public void Root_ResolvesAudioService()
+        {
+            Assert.That(_rootContainer.Resolve<IAudioService>(), Is.Not.Null);
         }
 
         [Test]

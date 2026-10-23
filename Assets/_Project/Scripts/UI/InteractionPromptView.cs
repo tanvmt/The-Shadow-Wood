@@ -22,6 +22,8 @@ namespace TheShadowWood.UI
         private InteractableBehaviour _target;
         private Renderer[] _targetRenderers;
         private string _keyLabel;
+        private string _prompt;
+        private string _blockedReason;
         private bool _visible;
 
         [Inject]
@@ -55,25 +57,29 @@ namespace TheShadowWood.UI
 
         private void LateUpdate()
         {
-            if (!_visible)
-            {
-                return;
-            }
-
             if (_target == null)
             {
-                SetVisible(false);
+                if (_visible)
+                {
+                    SetVisible(false);
+                }
+
                 return;
             }
 
-            // Device switch changes the key label without a focus change.
-            if (!ReferenceEquals(_keyLabel, _input.InteractBindingLabel))
+            // Device switch or a target that rewrites its own prompt (e.g. a radio toggled on) changes the text without a focus change.
+            if (!ReferenceEquals(_keyLabel, _input.InteractBindingLabel)
+                || _prompt != _target.Prompt
+                || _blockedReason != _target.BlockedReason)
             {
                 Refresh();
                 return;
             }
 
-            FollowTarget();
+            if (_visible)
+            {
+                FollowTarget();
+            }
         }
 
         private void FollowTarget()
@@ -106,6 +112,8 @@ namespace TheShadowWood.UI
             }
 
             _keyLabel = _input.InteractBindingLabel;
+            _prompt = _target != null ? _target.Prompt : null;
+            _blockedReason = _target != null ? _target.BlockedReason : null;
             string text = _input.Context == InputContext.Gameplay
                 ? InteractionPromptText.Build(focus, _keyLabel)
                 : null;

@@ -45,6 +45,7 @@ Assembly: `Interaction` chỉ phụ thuộc `Core`. `UI` và `Inventory` tham ch
 | `InteractionHighlight.cs`, `BehaviourInteractionHighlight.cs`, `RendererMaterialInteractionHighlight.cs` | Highlight khi focus |
 | `DestroyOnInteract.cs` | Interactable one-shot cho object test |
 | `TVInteractable.cs` | TV phát video, camera blend vào màn hình. Xem [TVInteractable.md](TVInteractable.md) |
+| `RadioInteractable.cs` | Radio bật/tắt, tiếng 3D qua `IAudioService`, prompt đổi theo trạng thái. Xem [AudioSystem.md](AudioSystem.md#radio) |
 | `UI/InteractionPromptView.cs` | Một label TMP world space dùng chung, bám theo object đang focus |
 | `UI/InteractionCrosshairUI.cs` | Chấm crosshair phản ứng theo focus |
 | `Inventory/PickupItem.cs` | Nhặt `ItemDefinition` vào `IInventoryService`. Xem [FlagsInventory.md](FlagsInventory.md) |
@@ -133,11 +134,11 @@ Trên mỗi `InteractableBehaviour`:
 | `Blocked Reason` | Chữ khi `CanInteract == false`, không kèm phím (ví dụ `Cửa bị khoá`). Để trống thì ẩn |
 | `Prompt Anchor` | Transform đặt chữ. Để trống thì đặt giữa và ngay trên đỉnh bounds của mọi renderer đang bật, cộng `Height Offset` |
 
-`Prompt` và `BlockedReason` là `virtual`, subclass có thể trả chuỗi động (ví dụ cửa đổi lý do theo trạng thái khoá).
+`Prompt` và `BlockedReason` là `virtual`, subclass có thể trả chuỗi động (ví dụ radio đổi `Turn on`/`Turn off`, cửa đổi lý do theo trạng thái khoá). View tự thấy chữ đổi, subclass không cần báo gì.
 
 Hành vi của view:
 
-- Cập nhật text khi `FocusChanged`, khi đổi context, hoặc khi đổi thiết bị (nhãn phím đổi). Không tạo chuỗi mới mỗi frame.
+- Cập nhật text khi `FocusChanged`, khi đổi context, khi đổi thiết bị (nhãn phím đổi), hoặc khi `Prompt`/`BlockedReason` của target trả chữ khác lần trước. Mỗi `LateUpdate` chỉ so chuỗi, chữ giống thì không ghép lại.
 - Mỗi `LateUpdate` đặt lại vị trí theo target và copy rotation của camera (billboard song song mặt màn hình, chữ không bị méo phối cảnh).
 - Ẩn khi không focus, context khác `Gameplay`, hoặc target bị destroy.
 - AABB của object xoay xiên to hơn hình thật, chữ có thể hơi cao. Khi đó dùng `Prompt Anchor`.
@@ -243,6 +244,8 @@ EditMode: `Assets/_Project/Tests/EditMode/Interaction/` (assembly `TheShadowWood
 
 `InteractionPromptTextTests`: không target, tương tác được (`[E] …`), bị chặn có lý do, bị chặn không lý do, prompt rỗng.
 
+`RadioInteractableTests` (dùng `FakeAudioService` của Interaction.Tests): bật/tắt có fade, prompt đổi, tiếng click, flag chỉ set lần đầu, cue one-shot phát hết thì tự tắt, cue rỗng bị từ chối, thiếu inject hoặc `Broadcast` thì bị chặn.
+
 Test của `PickupItem` nằm ở `Tests/EditMode/Inventory/PickupItemTests.cs`, xem [FlagsInventory.md](FlagsInventory.md#kiểm-thử).
 
 Checklist play test:
@@ -254,3 +257,4 @@ Checklist play test:
 - Cube bị destroy khi đang focus → prompt và highlight biến mất.
 - Vào TV → prompt và crosshair ẩn, thoát ra thì hiện lại.
 - Nhặt pickup → subtitle `Picked up: …`, object biến mất.
+- Bấm radio liên tục → prompt đổi `Turn on`/`Turn off` ngay, không cần nhìn ra chỗ khác.

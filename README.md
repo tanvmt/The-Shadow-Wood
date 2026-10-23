@@ -67,12 +67,13 @@ Assets/
 ├── _Project/                         # Nội dung do team phát triển
 │   ├── Animations/                    # Animation nhân vật và môi trường
 │   ├── Audio/                         # Ambience, music, SFX, voiceover
-│   ├── Data/                          # Config SO, Flags/, Items/
+│   ├── Data/                          # Config SO, Flags/, Items/, Audio/ (cue, ambience, audio config)
 │   ├── Materials/                     # Material nội bộ
 │   ├── Models/                        # Model nhân vật, môi trường và prop
 │   ├── Prefabs/                       # Prefab character, environment, system, interactable
 │   ├── Scenes/                        # Bootstrap, Menu, Gameplay
 │   ├── Scripts/                       # C# theo từng domain
+│   │   ├── Audio/                     # AudioService, ambience, AudioDirector (audio state theo flag)
 │   │   ├── Bootstrap/                 # Composition root: LifetimeScope và flow của từng scene
 │   │   ├── Core/                      # Contract dùng chung, scene loader, input service, flag service, item contract
 │   │   ├── Editor/                    # Công cụ Editor (Scene Switcher)
@@ -80,7 +81,7 @@ Assets/
 │   │   ├── Inventory/                 # InventoryService, PickupItem
 │   │   ├── Player/                    # FPS controller, look, camera rig, focus/rung camera, đèn pin
 │   │   ├── UI/                        # Screen service, menu, pause, settings, fade, subtitle, crosshair
-│   │   └── Audio/, Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
+│   │   └── Enemy/, Environment/, Puzzles/, SaveSystem/, Attributes/
 │   ├── Settings/                      # VContainerSettings, Input System settings
 │   ├── Tests/EditMode/                # EditMode test
 │   └── UI/                            # Font, icon, texture UI
@@ -94,6 +95,7 @@ Docs/
 ├── InteractionSystem.md               # Tài liệu interaction
 ├── UISystem.md                        # Màn hình, pause, settings, fade, subtitle
 ├── FlagsInventory.md                  # Flag, inventory, pickup, đèn pin
+├── AudioSystem.md                     # Cue, ambience, audio state, bước chân, radio
 └── DevelopmentPlan.md                 # Kế hoạch phát triển theo branch
 ```
 
@@ -130,9 +132,20 @@ Hướng dẫn cấu hình chi tiết, outline và test case: [Docs/InteractionS
 
 Tiến trình chơi lưu ở hai service trong scope Gameplay: `IFlagService` (flag bool, asset `FlagId`) và `IInventoryService` (item, asset `ItemDefinition`). Flag và item đều là ScriptableObject trong `Assets/_Project/Data/Flags/` và `Data/Items/`, nên đổi tên không làm hỏng reference. Nhặt đồ hiện subtitle `Picked up: …`. Đèn pin chỉ bật được sau khi nhặt item `Flashlight`. Chi tiết: [Docs/FlagsInventory.md](Docs/FlagsInventory.md).
 
+### Âm thanh
+
+Mọi âm phát qua `IAudioService` (Root): mô tả âm bằng asset `AudioCue` (clip, bus, 2D/3D, loop), service tự quản pool `AudioSource`, fade và âm lượng theo slider. Chưa dùng AudioMixer.
+
+- **Ambience:** `AmbienceProfile` gồm loop nền (mưa) và tiếng ngẫu nhiên quanh người chơi (ếch).
+- **Audio state:** ambience và nhạc đổi theo đoạn truyện. Gameplay chỉ set flag; `AudioDirector` chọn state trong `GameplayAudioConfig` và crossfade.
+- **Bước chân:** khớp nhịp nhún camera, tiếng theo `PhysicsMaterial` của mặt đất.
+- **Radio:** interactable bật/tắt, tiếng 3D phát ra từ radio.
+
+Chi tiết, cách tạo cue/ambience/state và thêm bề mặt bước chân: [Docs/AudioSystem.md](Docs/AudioSystem.md).
+
 ### UI
 
-UI tối giản, không dùng package UI manager. Mọi màn hình (menu, pause, settings, sau này note, inventory, keypad) kế thừa `UIScreen` và mở/đóng qua `IUIScreenService`: service tự khoá player, hiện con trỏ, xử lý Esc và chồng màn hình. Pause dừng hẳn game; settings gồm âm lượng và độ nhạy chuột, lưu PlayerPrefs. Chuyển scene có fade đen qua `ISceneTransition`; subtitle qua `ISubtitleService`.
+UI tối giản, không dùng package UI manager. Mọi màn hình (menu, pause, settings, sau này note, inventory, keypad) kế thừa `UIScreen` và mở/đóng qua `IUIScreenService`: service tự khoá player, hiện con trỏ, xử lý Esc và chồng màn hình. Pause dừng hẳn game; settings gồm âm lượng Master/Music/SFX và độ nhạy chuột, lưu PlayerPrefs. Chuyển scene có fade đen qua `ISceneTransition`; subtitle qua `ISubtitleService`.
 
 Prefab dựng sẵn trong `Assets/_Project/Prefabs/UI/`: `PauseScreen`, `SettingsScreen`, `SubtitleView`. Chi tiết, cách thêm màn hình mới và setup scene: [Docs/UISystem.md](Docs/UISystem.md).
 
@@ -172,6 +185,15 @@ Không chỉ raycast vào layer `Interactable`: raycast phải nhìn thấy tư�
 
 Flag mới tạo bằng **Create → The Shadow Wood → Flags → Flag** trong `Data/Flags/`. Chi tiết: [Docs/FlagsInventory.md](Docs/FlagsInventory.md).
 
+### Âm thanh
+
+1. Kéo clip vào `Assets/_Project/Audio/`, tạo cue bằng **Create → The Shadow Wood → Audio → Audio Cue** trong `Data/Audio/Cues/`.
+2. Chọn `Bus` (quyết định slider nào điều khiển), `Spatial Blend` (0 = 2D, 1 = 3D), `Loop`.
+3. Phát từ code bằng `IAudioService`: `Play` cho âm 2D, `PlayAt`/`PlayAttached` cho âm 3D. Loop thì giữ handle và `Stop` khi xong.
+4. Ambience/nhạc theo đoạn truyện: tạo flag, thêm một dòng vào `States[]` của `GameplayAudioConfig`, set flag ở chỗ xảy ra sự kiện.
+
+Cue chưa có clip vẫn hợp lệ (phát ra im), nên có thể nối trước rồi thêm clip sau. Chi tiết: [Docs/AudioSystem.md](Docs/AudioSystem.md).
+
 ### Scene mới
 
 1. Tạo scene trong `Assets/_Project/Scenes/`.
@@ -192,7 +214,9 @@ Chạy qua **Window → General → Test Runner → EditMode → Run All**. Test
 | `TheShadowWood.Core.Tests` | `Tests/EditMode/Core/InputContext*Tests.cs` | Bảng quy tắc context, push/dispose context stack |
 | `TheShadowWood.Core.Tests` | `Tests/EditMode/Core/FlagServiceTests.cs` | Set/Clear flag, chỉ publish khi đổi |
 | `TheShadowWood.Inventory.Tests` | `Tests/EditMode/Inventory/*Tests.cs` | Inventory add/remove/giới hạn, pickup bị chặn |
-| `TheShadowWood.Player.Tests` | `Tests/EditMode/Player/*Tests.cs` | Look, motor, crouch, stamina, head bob, đèn pin |
+| `TheShadowWood.Player.Tests` | `Tests/EditMode/Player/*Tests.cs` | Look, motor, crouch, stamina, head bob, bước chân, đèn pin |
+| `TheShadowWood.Audio.Tests` | `Tests/EditMode/Audio/*Tests.cs` | Pool, volume theo bus, pause, chọn clip, ambience, chọn audio state, crossfade |
+| `TheShadowWood.Interaction.Tests` | `Tests/EditMode/Interaction/RadioInteractableTests.cs` | Radio bật/tắt, prompt, flag |
 
 Trước khi tạo pull request, tối thiểu: Console không có compile error, EditMode tests pass, Play từ `Bootstrap` và đi hết luồng `Menu` → `Gameplay`. Nếu thay đổi controller hoặc interaction, play-test thêm trong `Gameplay`.
 
@@ -217,7 +241,8 @@ Trước khi tạo pull request, tối thiểu: Console không có compile error
 | Player không đi/nhìn được, con trỏ không khoá | Có context `UI`/`Focus`/`Puzzle` chưa được dispose. Kiểm tra `IInputService.Context` và class đã push context. |
 | Player lún nửa dưới sàn | Pivot của Player phải ở chân: `Visual` và `CameraRoot` nằm trên pivot, đặt `y` của Player bằng mặt sàn. |
 | Hai camera cùng nghe âm thanh | Tắt hoặc xóa `AudioListener` thừa; chỉ để một listener enabled. |
+| Không có tiếng, không lỗi | Cue chưa có clip, hoặc slider Master/Music/SFX đang thấp. Xem [Docs/AudioSystem.md](Docs/AudioSystem.md#lỗi-thường-gặp). |
 
 ---
 
-Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md) · [UI System](Docs/UISystem.md) · [Flags & Inventory](Docs/FlagsInventory.md)
+Tài liệu theo hệ thống: [Dependency Injection](Docs/DependencyInjection.md) · [Scene Flow](Docs/SceneFlow.md) · [Player System](Docs/PlayerSystem.md) · [Interaction System](Docs/InteractionSystem.md) · [UI System](Docs/UISystem.md) · [Flags & Inventory](Docs/FlagsInventory.md) · [Audio System](Docs/AudioSystem.md)
