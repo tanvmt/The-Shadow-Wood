@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using TheShadowWood.Core.Audio;
 using TheShadowWood.Core.Items;
 using TheShadowWood.Interaction.Tests;
 using UnityEngine;
@@ -11,6 +12,7 @@ namespace TheShadowWood.Player.Tests
         private FakeInputService _input;
         private FakeInventory _inventory;
         private FakeFlashlightView _view;
+        private FakeAudioService _audio;
         private FlashlightController _flashlight;
 
         [SetUp]
@@ -18,14 +20,20 @@ namespace TheShadowWood.Player.Tests
         {
             _input = new FakeInputService();
             _inventory = new FakeInventory();
-            _view = new FakeFlashlightView { RequiredItem = ScriptableObject.CreateInstance<ItemDefinition>() };
-            _flashlight = new FlashlightController(_view, _input, _inventory);
+            _audio = new FakeAudioService();
+            _view = new FakeFlashlightView
+            {
+                RequiredItem = ScriptableObject.CreateInstance<ItemDefinition>(),
+                SwitchCue = ScriptableObject.CreateInstance<AudioCue>()
+            };
+            _flashlight = new FlashlightController(_view, _input, _inventory, _audio);
         }
 
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_view.RequiredItem);
+            Object.DestroyImmediate(_view.SwitchCue);
         }
 
         [Test]
@@ -35,6 +43,7 @@ namespace TheShadowWood.Player.Tests
 
             Assert.That(_flashlight.IsOn, Is.False);
             Assert.That(_view.Calls, Is.Empty);
+            Assert.That(_audio.Plays, Is.Empty);
         }
 
         [Test]
@@ -49,6 +58,8 @@ namespace TheShadowWood.Player.Tests
             Press();
             Assert.That(_flashlight.IsOn, Is.False);
             Assert.That(_view.IsOn, Is.False);
+            Assert.That(_audio.Plays, Has.Count.EqualTo(2));
+            Assert.That(_audio.Plays[0].Cue, Is.SameAs(_view.SwitchCue));
         }
 
         [Test]
@@ -64,6 +75,35 @@ namespace TheShadowWood.Player.Tests
             Assert.That(_view.Calls, Has.Count.EqualTo(1));
         }
 
+        [Test]
+        public void PickingUpItem_ShowsModel()
+        {
+            _flashlight.Tick();
+            Assert.That(_view.IsHeld, Is.False);
+
+            _inventory.Owned.Add(_view.RequiredItem);
+            _flashlight.Tick();
+
+            Assert.That(_flashlight.IsHeld, Is.True);
+            Assert.That(_view.HeldCalls, Is.EqualTo(new[] { true }));
+        }
+
+        [Test]
+        public void LosingItem_HidesModelAndTurnsOff()
+        {
+            _inventory.Owned.Add(_view.RequiredItem);
+            Press();
+
+            _inventory.Owned.Remove(_view.RequiredItem);
+            _input.FlashlightPressed = false;
+            _flashlight.Tick();
+
+            Assert.That(_view.IsHeld, Is.False);
+            Assert.That(_flashlight.IsOn, Is.False);
+            Assert.That(_view.IsOn, Is.False);
+            Assert.That(_audio.Plays, Has.Count.EqualTo(1));
+        }
+
         private void Press()
         {
             _input.FlashlightPressed = true;
@@ -73,8 +113,17 @@ namespace TheShadowWood.Player.Tests
         private sealed class FakeFlashlightView : IFlashlightView
         {
             public ItemDefinition RequiredItem { get; set; }
+            public AudioCue SwitchCue { get; set; }
+            public bool IsHeld { get; private set; }
             public bool IsOn { get; private set; }
             public List<bool> Calls { get; } = new List<bool>();
+            public List<bool> HeldCalls { get; } = new List<bool>();
+
+            public void SetHeld(bool held)
+            {
+                IsHeld = held;
+                HeldCalls.Add(held);
+            }
 
             public void SetOn(bool on)
             {

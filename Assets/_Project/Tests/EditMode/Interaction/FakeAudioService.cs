@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace TheShadowWood.Interaction.Tests
 {
-    internal sealed class FakeAudioService : IAudioService
+    public sealed class FakeAudioService : IAudioService
     {
         private readonly HashSet<AudioHandle> _playing = new HashSet<AudioHandle>();
         private int _lastId;
