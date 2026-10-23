@@ -41,7 +41,7 @@ Asset:
 
 | Asset | Nội dung |
 |---|---|
-| `Data/Flags/` | `Digit1Revealed` … `Digit4Revealed`. Flag khác tạo ở branch dùng tới nó |
+| `Data/Flags/` | `Digit1Revealed` … `Digit4Revealed`; `TensionUnease`, `TensionHigh`, `TensionClimax` (đổi audio state, xem [AudioSystem.md](AudioSystem.md#audio-state-theo-đoạn-truyện)). Flag khác tạo ở branch dùng tới nó |
 | `Data/Items/` | `Flashlight`, `Candle`, `Lighter`, `ShrineKey`, `ToyPieceA`, `ToyPieceB` (đều `Max Count` 1) |
 | `Prefabs/Interactables/PickupItem_Base.prefab` | Cube nhỏ có highlight, `PickupItem` chưa gán item, prompt `Pick up` |
 
@@ -83,6 +83,7 @@ public sealed class ParentsNote
 - Flag chỉ là bool. Chuyện cần đếm (đủ 2 mảnh đồ chơi) thì dùng số lượng item.
 - `Set`/`Clear` với flag `null` ném `ArgumentNullException`: field flag chưa gán là lỗi setup, báo ngay thay vì lặng lẽ bỏ qua beat. `Has(null)` trả `false`.
 - Muốn phản ứng khi flag đổi thì subscribe `ISubscriber<FlagChangedMessage>` và lọc theo `message.Flag`. Subscription huỷ trong `Dispose()`.
+- Flag cũng điều khiển ambience và nhạc: `AudioDirector` nghe mọi flag và chọn audio state theo flag đang bật. Muốn âm thanh đổi theo một đoạn truyện thì thêm state gắn với flag đó, không gọi audio từ chỗ set flag.
 
 ## Inventory
 
@@ -138,9 +139,10 @@ Subtitle nhặt đồ dùng chung dòng subtitle với lời thoại, dòng mớ
 |---|---|---|
 | Bật/tắt | `F` | West button (X / □) |
 
-- Chưa có item `Flashlight` trong inventory thì bấm không có tác dụng.
+- Chưa có item `Flashlight` trong inventory thì bấm không có tác dụng, và model đèn trên tay bị ẩn (`FlashlightView.Model`). Nhặt item thì model hiện ra; mất item thì model ẩn và đèn tắt.
+- Mỗi lần bật/tắt phát `Switch Cue` (`Data/Audio/Cues/Flashlight_Switch`, 2D). Để trống thì không có tiếng.
 - Action `Flashlight` chỉ bật ở context `Gameplay`: pause, xem TV, puzzle, đọc note đều không bật/tắt được.
-- Pin không hết, không chập chờn. Chập chờn sẽ do `feat/audio-tension` hoặc scripted sequence điều khiển.
+- Pin không hết, không chập chờn. Chập chờn sẽ nghe `TensionChangedMessage` hoặc do scripted sequence điều khiển.
 - Chỉnh độ sáng, góc, màu trên Light trong `Player.prefab`. Scene `Gameplay` hiện không có light nào khác nên đèn trông rất sáng.
 
 ## Kiểm thử
@@ -154,7 +156,7 @@ Subtitle nhặt đồ dùng chung dòng subtitle với lời thoại, dòng mớ
 | `TheShadowWood.Inventory.Tests` | `Inventory/InventoryServiceTests.cs` | Add/remove/count, vượt `Max Count`, remove thiếu, message đúng count/total, thứ tự `Items`, tham số sai |
 | `TheShadowWood.Inventory.Tests` | `Inventory/PickupItemTests.cs` | Còn chỗ thì nhặt được; chưa gán item, inventory đầy, chưa inject thì bị chặn và object ở lại |
 | `TheShadowWood.UI.Tests` | `UI/ItemPickupNotifierTests.cs` | Câu thông báo một cái và nhiều cái |
-| `TheShadowWood.Player.Tests` | `Player/FlashlightControllerTests.cs` | Chưa có item thì không bật, có item thì toggle, không bấm thì giữ nguyên |
+| `TheShadowWood.Player.Tests` | `Player/FlashlightControllerTests.cs` | Chưa có item thì không bật, có item thì toggle, không bấm thì giữ nguyên, nhặt item thì hiện model, mất item thì ẩn model và tắt đèn |
 
 `PickupItemTests` chỉ test nhánh bị chặn: nhánh thành công gọi `Destroy`, Edit Mode không cho phép. Nhánh đó kiểm bằng play test.
 
@@ -164,7 +166,7 @@ Subtitle nhặt đồ dùng chung dòng subtitle với lời thoại, dòng mớ
 |---|---|
 | Bấm `F` khi chưa nhặt đèn pin | Không có gì |
 | Nhặt Candle, Lighter, Flashlight | Mỗi lần: subtitle `Picked up: …`, object biến mất, prompt và highlight tắt |
-| `F` sau khi nhặt đèn pin | Bật/tắt, đèn theo hướng nhìn |
+| `F` sau khi nhặt đèn pin | Model đèn hiện trên tay; bấm thì bật/tắt có tiếng click, đèn theo hướng nhìn |
 | Esc pause rồi `F` | Đèn không đổi |
 | Xem TV rồi `F` | Đèn không đổi |
 | Về Menu rồi vào lại Gameplay | Inventory rỗng, đèn tắt, pickup có lại đủ |

@@ -8,7 +8,7 @@ Tài liệu nền tảng UI của **The Shadow Wood**: mở/đóng màn hình qu
 |---|---|---|
 | `UIScreenService` | Chồng màn hình. Mỗi màn hình mở ra push một context `UI`, chỉ màn trên cùng bấm được, Esc đóng màn trên cùng | Menu, Gameplay (mỗi scene một bản) |
 | Pause | Esc ở `Gameplay` mở Pause, game dừng hẳn (`timeScale = 0`, âm thanh dừng). Resume / Settings / Về Menu | Gameplay |
-| Settings | Âm lượng tổng, độ nhạy chuột. Áp dụng ngay khi kéo, lưu khi đóng màn hình | Menu, Gameplay |
+| Settings | Âm lượng Master/Music/SFX, độ nhạy chuột. Áp dụng ngay khi kéo, lưu khi đóng màn hình | Menu, Gameplay |
 | Fade + chuyển scene | `ISceneTransition`: fade đen → load → fade sáng | Root |
 | Subtitle | Một dòng chữ ở đáy màn hình, tự ẩn sau `duration` | Gameplay |
 
@@ -38,7 +38,7 @@ Esc dùng chung cho hai action: `Pause` chỉ bật ở `Gameplay`, `Cancel` b�
 | `UI/Screens/UIScreen.cs` | UI | MonoBehaviour base. Ẩn/hiện bằng `SetActive`, khoá/mở bằng `CanvasGroup`, event `Shown`/`Hidden` |
 | `UI/Screens/IUIScreenService.cs`, `UIScreenService.cs` | UI | C# thuần, `ITickable`. Chồng màn hình, giữ vé context, Esc đóng màn trên cùng |
 | `UI/Pause/PauseScreen.cs`, `PausePresenter.cs` | UI | Màn Pause và logic Esc / Resume / Settings / Về Menu |
-| `UI/Settings/SettingsScreen.cs`, `SettingsPresenter.cs` | UI | Hai slider + nút Back, đồng bộ với `IGameSettings` |
+| `UI/Settings/SettingsScreen.cs`, `SettingsPresenter.cs` | UI | Bốn slider (Master, Music, SFX, Look) + nút Back, đồng bộ với `IGameSettings` |
 | `UI/Menu/MainMenuView.cs`, `MainMenuPresenter.cs` | UI | Main menu là một `UIScreen` không đóng bằng Esc |
 | `UI/Fade/ScreenFader.cs` | UI | C# thuần, tự tạo Canvas đen (sort 1000, `DontDestroyOnLoad`) ở lần dùng đầu |
 | `UI/Subtitles/SubtitleService.cs`, `SubtitleView.cs`, `ISubtitleView.cs` | UI | Đếm thời gian subtitle / giữ label |
@@ -167,9 +167,13 @@ if (!loaded && _view != null)
 | Setting | Khoảng | Mặc định | Áp dụng |
 |---|---|---|---|
 | `MasterVolume` | 0–1 | 1 | `AudioListener.volume`, ngay khi đổi |
+| `MusicVolume` | 0–1 | 1 | Nhân vào âm bus `Music`. `AudioService` áp lại cho âm đang phát |
+| `SfxVolume` | 0–1 | 1 | Nhân vào âm bus `Sfx`, `Ambience`, `Ui` (bước chân, mưa, radio...) |
 | `LookSensitivity` | 0.2–3 | 1 | Hệ số nhân với `FirstPersonLookConfig` (chuột và tay cầm). `PlayerController` nghe event `Changed` |
 
-- Lưu ở PlayerPrefs với key `settings.masterVolume`, `settings.lookSensitivity`, chỉ khi gọi `Save()` (đóng màn Settings).
+- Lưu ở PlayerPrefs với key `settings.masterVolume`, `settings.musicVolume`, `settings.sfxVolume`, `settings.lookSensitivity`, chỉ khi gọi `Save()` (đóng màn Settings).
+- Bus và cách âm lượng được tính: [AudioSystem.md](AudioSystem.md#bus-và-âm-lượng).
+- Prefab `SettingsScreen` xếp hàng từ trên xuống: Master, Music, SFX, Look, rồi nút Back. Thêm slider mới: nhân bản một hàng, thêm field vào `SettingsScreen`, nối trong `SettingsPresenter` bằng `SetupVolumeSlider`.
 - Đổi cảm giác mặc định cho mọi người: chỉnh `mouseSensitivity`/`gamepadSensitivity` trong `FirstPersonLookConfig.asset`, giữ hệ số mặc định là 1.
 - Đưa về mặc định khi test: **Edit → Clear All PlayerPrefs**.
 - Ai đăng ký `IGameSettings.Changed` từ scene scope phải huỷ đăng ký trong `Dispose()`, vì `GameSettings` ở Root sống lâu hơn scene.
@@ -216,7 +220,7 @@ Style chung: nút xám đen `0.12`, hover/chọn `0.28`, nhấn `0.4`; chữ xá
 | `TheShadowWood.UI.Tests` | `UI/ItemPickupNotifierTests.cs` | Câu `Picked up: …` một cái và nhiều cái |
 | `TheShadowWood.Bootstrap.Tests` | `Bootstrap/SceneTransitionTests.cs` | Thứ tự fade → load → fade, load bị từ chối, lỗi không kẹt màn đen, chặn gọi chồng |
 | `TheShadowWood.Core.Tests` | `Core/GamePauseTests.cs` | Dừng time/audio, vé lồng nhau, dispose vé hai lần, `Dispose` luôn resume |
-| `TheShadowWood.Core.Tests` | `Core/GameSettingsTests.cs` | Mặc định, đọc + clamp giá trị đã lưu, event `Changed`, chỉ ghi khi `Save()` |
+| `TheShadowWood.Core.Tests` | `Core/GameSettingsTests.cs` | Mặc định, đọc + clamp giá trị đã lưu (cả Music/SFX), event `Changed`, chỉ ghi khi `Save()` |
 | `TheShadowWood.Core.Tests` | `Core/InputContextRulesTests.cs` | Mỗi context bật đúng một trong `Pause`/`Cancel` |
 | `TheShadowWood.Player.Tests` | `Player/FirstPersonLookTests.cs` | `SensitivityScale` nhân cả chuột và tay cầm |
 
@@ -230,6 +234,7 @@ Style chung: nút xám đen `0.12`, hover/chọn `0.28`, nhấn `0.4`; chữ xá
 | Esc trong Gameplay | Pause mở, vật lý và âm thanh dừng, con trỏ hiện |
 | Pause → Settings → Esc → Esc | Về Pause rồi Resume, điều khiển lại bình thường |
 | Đổi độ nhạy trong Pause rồi Resume | Xoay chuột thấy khác ngay |
+| Kéo slider SFX/Music trong Pause rồi Resume | Mưa, radio (SFX) hoặc nhạc (Music) to nhỏ theo |
 | Xem TV rồi Esc | Thoát TV, không mở Pause |
 | Pause → Main Menu → Start | Về Menu có fade, vào lại Gameplay không kẹt chuột, không đứng hình |
 | Chỉ dùng chuột | Mở Pause không có nút nào sáng sẵn |

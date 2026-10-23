@@ -1,6 +1,6 @@
 # Player System
 
-Tài liệu phần player của **The Shadow Wood**: input và context stack, camera FPS bằng Cinemachine, focus/rung camera, và controller di chuyển (motor, crouch, stamina, head bob).
+Tài liệu phần player của **The Shadow Wood**: input và context stack, camera FPS bằng Cinemachine, focus/rung camera, và controller di chuyển (motor, crouch, stamina, head bob, bước chân).
 
 ## Tổng quan
 
@@ -17,7 +17,8 @@ GameplayLifetimeScope
 │    ├─ FirstPersonMotor  tốc độ, gravity, terminal velocity
 │    ├─ CrouchState       chiều cao, giữ cúi khi bị trần chặn
 │    ├─ StaminaModel      tiêu hao theo vận tốc thực
-│    └─ HeadBob           offset quanh vị trí gốc của CameraRoot
+│    ├─ HeadBob           offset quanh vị trí gốc của CameraRoot, báo Stepped mỗi bước
+│    └─ bước chân         Stepped ──► raycast mặt đất ──► IAudioService.PlayAt (FootstepConfig)
 ├─ FlashlightController   bật/tắt FlashlightView khi đã có item Flashlight
 ├─ CameraRigBinder        gán FpsCamera theo CameraRoot lúc Start
 ├─ CameraFocusService     (ICameraFocusService) tự push context Focus
@@ -39,6 +40,7 @@ Logic nằm trong class C# thuần, nhận config qua constructor nên test Edit
 | `Player/PlayerController.cs` | Player | Entry point, ghép các module dưới đây |
 | `Player/Look/FirstPersonLook.cs`, `FirstPersonLookConfig.cs` | Player | Yaw/pitch, sensitivity, clamp |
 | `Player/Movement/*.cs` | Player | `FirstPersonMotor`, `CrouchState`, `StaminaModel`, `HeadBob`, `PlayerMovementConfig` |
+| `Player/Footsteps/FootstepConfig.cs` | Player | Cue bước chân theo `PhysicsMaterial`, volume theo dáng đi. Xem [AudioSystem.md](AudioSystem.md#bước-chân) |
 | `Player/Camera/*.cs` | Player | `CameraRig`, `CameraRigBinder`, `CameraFocusService`, `CameraShakeService` |
 | `Player/Flashlight/*.cs` | Player | `IFlashlightView`, `FlashlightView`, `FlashlightController`. Xem [FlagsInventory.md](FlagsInventory.md#đèn-pin) |
 | `Player/Dev/CameraSandboxDebug.cs` | Player | Phím test focus/rung, chỉ dùng khi dev |
@@ -51,6 +53,7 @@ Asset:
 | `Assets/_Project/Prefabs/System/CameraRig.prefab` | `Main Camera` (Brain), `FpsCamera`, `FocusCamera` |
 | `Assets/_Project/Data/Player/FirstPersonLookConfig.asset` | Độ nhạy chuột/gamepad, invert Y, giới hạn pitch |
 | `Assets/_Project/Data/Player/PlayerMovementConfig.asset` | Tốc độ, gravity, crouch, stamina, head bob |
+| `Assets/_Project/Data/Player/FootstepConfig.asset` | Cue bước chân mặc định, bảng bề mặt, volume crouch/walk/sprint. Gán vào `PlayerView` |
 | `Assets/_Project/Settings/InputSystem.inputsettings.asset` | Input System settings của project (Project Settings → Input System Package) |
 
 ## Input
@@ -170,7 +173,7 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 4. Lấy vận tốc ngang thực tế từ `CharacterController.velocity`. Chỉ tính là đang sprint khi tốc độ thực lớn hơn `Walk Speed` + 0.1, nên đâm vào tường không tốn stamina.
 5. Cập nhật `StaminaModel`.
 
-`LateTick` (LateUpdate): xoay yaw thân và pitch `CameraRoot`, cập nhật `HeadBob`, ghi vị trí `CameraRoot` = vị trí gốc − độ hạ khi cúi + offset bob. Chạy sau Update để Cinemachine đọc pose cuối cùng của frame.
+`LateTick` (LateUpdate): xoay yaw thân và pitch `CameraRoot`, cập nhật `HeadBob` (frame nào `Stepped` thì phát một tiếng chân), ghi vị trí `CameraRoot` = vị trí gốc − độ hạ khi cúi + offset bob. Chạy sau Update để Cinemachine đọc pose cuối cùng của frame.
 
 ### Module
 
@@ -180,7 +183,8 @@ Pivot của Player nằm **dưới chân**. `PlayerController` ghi đè `height`
 | `CrouchState` | Nhấn `Crouch` để bật/tắt. Chiều cao chuyển dần theo `Crouch Transition Speed`. Muốn đứng lên mà trần chặn thì vẫn cúi, tự đứng khi ra khỏi chỗ thấp |
 | Check trần | `Physics.CheckSphere` tại đỉnh chiều cao đứng, bán kính `Ceiling Check Radius`, theo `Ceiling Mask`. Mask không được chứa layer `Player` |
 | `StaminaModel` | Tiêu hao khi sprint thực sự, chờ `Regen Delay` rồi hồi. Cạn về 0 thì khoá sprint tới khi hồi đủ `Stamina To Resume Sprint`. `PlayerController.Stamina` expose `Current`, `Ratio`, `IsExhausted` cho UI |
-| `HeadBob` | Offset tính lại từ đầu mỗi frame, không cộng dồn. Biên độ tỉ lệ với tốc độ so với `Walk Speed`. Đứng yên hoặc trên không thì offset trở về 0 theo `Bob Return Speed` |
+| `HeadBob` | Offset tính lại từ đầu mỗi frame, không cộng dồn. Biên độ tỉ lệ với tốc độ so với `Walk Speed`. Đứng yên hoặc trên không thì offset trở về 0 theo `Bob Return Speed`. `Stepped` bật đúng frame nhịp nhún đi qua điểm thấp nhất (mỗi bước một lần), nên tiếng chân khớp cái nhún và đổi nhịp theo walk/sprint/crouch frequency |
+| Bước chân | Khi `Stepped`: raycast từ chân xuống theo `Ground Mask`, lấy `sharedMaterial` của collider, chọn cue trong `FootstepConfig`, phát 3D tại điểm chạm với volume theo dáng đi. `PlayerView` không gán `Footsteps` thì im lặng. Thêm bề mặt mới: [AudioSystem.md](AudioSystem.md#bước-chân) |
 | `FirstPersonLook` | Chuột: độ/pixel, không nhân `deltaTime`. Gamepad: độ/giây. Cả hai nhân thêm `SensitivityScale` (độ nhạy người chơi chỉnh trong Settings, `PlayerController` cập nhật qua `IGameSettings.Changed`). Pitch clamp trong `[Min Pitch, Max Pitch]`, giữ góc pitch đặt sẵn trên `CameraRoot` lúc Start |
 
 ### Config
@@ -227,7 +231,8 @@ Test nhanh camera bằng `CameraSandboxDebug` (đã gỡ khỏi scene): thêm v�
 | `TheShadowWood.Player.Tests` | `Player/FirstPersonMotorTests.cs` | Tăng tốc, gravity, grounded, terminal velocity |
 | `TheShadowWood.Player.Tests` | `Player/CrouchStateTests.cs` | Toggle, chuyển chiều cao, giữ cúi khi trần chặn |
 | `TheShadowWood.Player.Tests` | `Player/StaminaModelTests.cs` | Tiêu hao, regen delay, khoá khi cạn |
-| `TheShadowWood.Player.Tests` | `Player/HeadBobTests.cs` | Offset không cộng dồn, trở về 0 khi dừng |
+| `TheShadowWood.Player.Tests` | `Player/HeadBobTests.cs` | Offset không cộng dồn, trở về 0 khi dừng, số bước theo nhịp, không có bước khi đứng yên/trên không |
+| `TheShadowWood.Player.Tests` | `Player/FootstepConfigTests.cs` | Cue theo material, fallback default, volume crouch < walk < sprint |
 | `TheShadowWood.Player.Tests` | `Player/FlashlightControllerTests.cs` | Không có item thì không bật, có item thì toggle |
 
 `TheShadowWood.Player.Tests` tham chiếu `TheShadowWood.Interaction.Tests` để dùng chung `FakeInputService`.
@@ -236,4 +241,6 @@ Play-test thủ công khi sửa phần player: đi/chạy/cúi dưới vật th�
 
 ## Việc còn lại
 
-- Chưa có stamina HUD và footstep. `PlayerController` sẽ publish `PlayerStateMessage`/`FootstepMessage` khi có UI và AudioService.
+- Chưa có stamina HUD. `PlayerController` sẽ publish `PlayerStateMessage` khi có UI cần.
+- Bước chân chưa báo cho AI (quái nghe tiếng chân). Khi có enemy thì publish thêm message từ chỗ phát tiếng chân.
+- Chưa có cue/material bề mặt riêng (gỗ, sỏi). Làm cùng `feat/level-house`.
