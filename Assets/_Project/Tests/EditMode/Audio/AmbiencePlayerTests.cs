@@ -12,7 +12,6 @@ namespace TheShadowWood.Audio.Tests
         private TestAudio _audio;
         private FakeAudioService _service;
         private GameObject _cameraObject;
-        private GameplayAudioConfig _config;
         private AmbienceProfile _calm;
         private AmbienceProfile _tense;
         private AudioCue _rain;
@@ -36,27 +35,22 @@ namespace TheShadowWood.Audio.Tests
             _calm = Profile(new[] { _rain }, new AmbienceSpot(_frog, 1f, 1f, 6f, 15f, -1.6f, 0f));
             _tense = Profile(new[] { _wind });
 
-            _config = ScriptableObject.CreateInstance<GameplayAudioConfig>();
-            SetField(_config, "defaultAmbience", _calm);
-            SetField(_config, "startFadeIn", 2f);
-
-            _player = new AmbiencePlayer(_service, _config, _cameraObject.GetComponent<Camera>());
+            _player = new AmbiencePlayer(_service, _cameraObject.GetComponent<Camera>());
         }
 
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_cameraObject);
-            Object.DestroyImmediate(_config);
             Object.DestroyImmediate(_calm);
             Object.DestroyImmediate(_tense);
             _audio.Dispose();
         }
 
         [Test]
-        public void Start_PlaysDefaultLoopsWithFadeIn()
+        public void SetProfile_PlaysLoopsWithFadeIn()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
 
             Assert.That(_player.Current, Is.SameAs(_calm));
             Assert.That(_service.Plays.Count, Is.EqualTo(1));
@@ -67,7 +61,7 @@ namespace TheShadowWood.Audio.Tests
         [Test]
         public void SetProfile_SameProfile_DoesNothing()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
 
             _player.SetProfile(_calm, 1f);
 
@@ -78,7 +72,7 @@ namespace TheShadowWood.Audio.Tests
         [Test]
         public void SetProfile_Other_CrossfadesLoops()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
             AudioHandle rain = _service.Plays[0].Handle;
 
             _player.SetProfile(_tense, 3f);
@@ -92,7 +86,7 @@ namespace TheShadowWood.Audio.Tests
         [Test]
         public void Tick_PlaysDueSpotsAroundListener()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
 
             _player.Tick(1f);
 
@@ -109,7 +103,7 @@ namespace TheShadowWood.Audio.Tests
         [Test]
         public void NullProfile_StopsLoopsAndSpots()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
 
             _player.SetProfile(null, 1f);
             _player.Tick(10f);
@@ -122,7 +116,7 @@ namespace TheShadowWood.Audio.Tests
         [Test]
         public void Dispose_FadesOutLoopsAndStopsSpots()
         {
-            _player.Start();
+            _player.SetProfile(_calm, 2f);
             AudioHandle rain = _service.Plays[0].Handle;
 
             _player.Dispose();

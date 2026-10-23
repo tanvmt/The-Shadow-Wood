@@ -6,12 +6,11 @@ using VContainer.Unity;
 
 namespace TheShadowWood.Audio
 {
-    public sealed class AmbiencePlayer : IStartable, ITickable, IDisposable
+    public sealed class AmbiencePlayer : ITickable, IDisposable
     {
         public const float ExitFadeOut = 1f;
 
         private readonly IAudioService _audio;
-        private readonly GameplayAudioConfig _config;
         private readonly Transform _listener;
         private readonly System.Random _random = new System.Random();
         private readonly List<AudioHandle> _loops = new List<AudioHandle>();
@@ -19,19 +18,13 @@ namespace TheShadowWood.Audio
 
         private AmbienceScheduler _scheduler;
 
-        public AmbiencePlayer(IAudioService audio, GameplayAudioConfig config, Camera listener)
+        public AmbiencePlayer(IAudioService audio, Camera listener)
         {
             _audio = audio;
-            _config = config;
             _listener = listener.transform;
         }
 
         public AmbienceProfile Current { get; private set; }
-
-        public void Start()
-        {
-            SetProfile(_config.DefaultAmbience, _config.StartFadeIn);
-        }
 
         public void SetProfile(AmbienceProfile profile, float crossfade)
         {

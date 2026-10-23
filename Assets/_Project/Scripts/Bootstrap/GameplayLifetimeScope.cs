@@ -1,5 +1,6 @@
 using MessagePipe;
 using TheShadowWood.Audio;
+using TheShadowWood.Core.Audio;
 using TheShadowWood.Core.Cameras;
 using TheShadowWood.Core.Flags;
 using TheShadowWood.Core.Items;
@@ -47,7 +48,9 @@ namespace TheShadowWood.Bootstrap
             }
 
             builder.RegisterInstance(audioConfig);
+            builder.RegisterMessageBroker<TensionChangedMessage>(options);
             builder.RegisterEntryPoint<AmbiencePlayer>().AsSelf();
+            builder.RegisterEntryPoint<AudioDirector>();
 
             builder.RegisterEntryPoint<UIScreenService>();
             builder.RegisterComponentInHierarchy<InteractionPromptView>();
